@@ -1,0 +1,2 @@
+playwright>=1.50
+markdown2>=2.0
