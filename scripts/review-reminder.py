@@ -67,7 +67,7 @@ def get_due_reviews(student: str, target_date: str = None) -> list:
 
         due_date = srs.effective_due_date_for_queue(fm_sched)
 
-        if due_date and due_date <= target_date:
+        if srs.is_effective_due_on_or_before(due_date, target_date):
             frontmatter = parse_frontmatter(content)
             reviews.append({
                 'id': frontmatter.get('id', 'unknown'),

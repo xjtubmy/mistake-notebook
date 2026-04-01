@@ -69,7 +69,7 @@ def load_due_reviews(student: str, target_date: str = None) -> list:
 
         due_date = srs.effective_due_date_for_queue(fm)
 
-        if due_date and due_date <= target_date:
+        if srs.is_effective_due_on_or_before(due_date, target_date):
             reviews.append({
                 'id': fm.get('id', 'unknown'),
                 'subject': fm.get('subject', 'unknown'),

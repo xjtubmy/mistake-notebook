@@ -68,7 +68,8 @@ review-round: 0
 
 ### `due-date` 与 SRS 完成（重要）
 
-- **`due-date`**：下一轮到期的复习日；完成全部间隔后应写成 `completed`（或历史数据里的 `done`），此后不再进入「今日待复习」列表。不再使用 `mastered` 字段；脚本写回时会顺带删除旧的 `mastered:` 行。
+- **`due-date`**：下一轮到期的复习日；完成全部间隔后应写成 `completed`（或历史数据里的 `done`），此后不再进入「今日待复习」列表。
+- **「今天有什么要复习」**：只列出**有效到期日 ≤ 今天**的题目（含已超期仍待复习的）；**尚未到期**（有效到期日在今天之后）的题目不显示。
 - **第一轮（`review-round: 0`）**：待复习队列里的到期日**严格**按 `created` 日期 **+1 天** 计算，与文件里旧的 `due-date` 不一致时，以 `created+1` 为准。需要把 frontmatter 改一致时运行：  
   `python3 skills/mistake-notebook/scripts/update-review.py --student <姓名> --fix-first-due`
 
@@ -112,7 +113,7 @@ data/mistake-notebook/
 
 - 环境安装、依赖缺失、PDF/Playwright 问题：读 `docs/requirements.md`
 - 自然语言触发“今天有什么要复习的”“复习完了”：读 `docs/auto-review-update.md`
-- 复习进度更新、掌握情况、批量/单题更新：读 `docs/review-update-guide.md`
+- 复习进度更新、批量/单题更新：读 `docs/review-update-guide.md`
 - 定时提醒、飞书/微信渠道、`crontab`、`--dry-run`：读 `docs/cron-setup.md`
 - 学生档案不存在或需要新建：读 `resources/student-profile-template.md`
 - 错误类型标注、分析归因：读 `resources/error-types.md`

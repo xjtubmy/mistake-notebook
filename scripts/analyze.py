@@ -134,20 +134,15 @@ def generate_report(student: str, mistakes: list, subject: str = None) -> str:
         if not srs.due_date_is_scheduled(fm_sched):
             continue
         due_date_str = srs.effective_due_date_for_queue(fm_sched)
-        if not due_date_str:
+        if not srs.is_effective_due_on_or_before(due_date_str, now[:10]):
             continue
-        try:
-            datetime.strptime(due_date_str, '%Y-%m-%d')
-        except ValueError:
-            continue
-        if due_date_str <= now[:10]:
-            due_reviews.append({
-                'id': fm.get('id', 'unknown'),
-                'knowledge_point': fm.get('knowledge-point', ''),
-                'due_date': due_date_str,
-                'review_round': fm.get('review-round', 0),
-                'path': m['path']
-            })
+        due_reviews.append({
+            'id': fm.get('id', 'unknown'),
+            'knowledge_point': fm.get('knowledge-point', ''),
+            'due_date': due_date_str,
+            'review_round': fm.get('review-round', 0),
+            'path': m['path']
+        })
     
     # 生成报告
     report = f"""---

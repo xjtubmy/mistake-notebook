@@ -3,7 +3,7 @@
 复习进度更新脚本（支持单题和批量更新）
 
 待复习列表：到期日 <= 今天 且仍在 SRS 中；`review-round: 0` 时到期日严格为 `created + 1 天`（与文件里旧 due-date 无关，可用 `--fix-first-due` 写回）。
-批量 `--today`：每道题 `review-round` 自增 1 并写回下一 `due-date`，不再使用固定 `--round`。完成全部轮次时 `due-date: completed`，不再维护 `mastered` 字段。
+批量 `--today`：每道题 `review-round` 自增 1 并写回下一 `due-date`，不再使用固定 `--round`。完成全部轮次时 `due-date: completed`。
 
 用法:
     # 单题更新
@@ -36,11 +36,6 @@ if str(_SCRIPT_DIR) not in sys.path:
 import mistake_srs as srs
 
 REVIEW_INTERVALS = srs.REVIEW_INTERVALS
-
-
-def _strip_mastered_frontmatter(content: str) -> str:
-    """移除已废弃的 mastered 行（每次写回错题时顺带清理）。"""
-    return re.sub(r'^mastered:\s*.*\n?', '', content, flags=re.MULTILINE)
 
 
 def find_mistake_file(student: str, mistake_id: str) -> Path:
@@ -80,8 +75,8 @@ def load_due_reviews(student: str, target_date: str = None, subject: str = None)
         if subject and fm.get('subject') != subject:
             continue
         
-        # 检查是否到期
-        if due_date and due_date <= target_date:
+        # 仅到期或已超期：有效到期日 <= 查询日；未到期的题目不列入今日复习
+        if srs.is_effective_due_on_or_before(due_date, target_date):
             try:
                 due = datetime.strptime(due_date, '%Y-%m-%d')
                 today = datetime.strptime(target_date, '%Y-%m-%d')
@@ -137,7 +132,7 @@ def fix_first_round_due_dates(student: str, dry_run: bool = False) -> int:
                 continue
             pos = ins.end()
             newc = content[:pos] + f'due-date: {canon}\n' + content[pos:]
-        mistake_file.write_text(_strip_mastered_frontmatter(newc), encoding='utf-8')
+        mistake_file.write_text(newc, encoding='utf-8')
     return changed
 
 
@@ -162,7 +157,6 @@ def update_mistake_file(mistake_file: Path, review_round: int) -> tuple:
     
     content = re.sub(r'review-round: \d+', f'review-round: {review_round}', content)
     content = re.sub(r'due-date: \S+', f'due-date: {next_review_str}', content)
-    content = _strip_mastered_frontmatter(content)
 
     mistake_file.write_text(content, encoding='utf-8')
     return True, next_review_str

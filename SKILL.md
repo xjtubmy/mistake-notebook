@@ -69,7 +69,7 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 
 当用户说“今天有什么要复习的”“今天的复习提醒”时：
 
-1. 先生成今日待复习列表
+1. 先生成今日待复习列表：**仅包含有效到期日 ≤ 今天的题目**（含已超期）；**未到期的题目不得列出**
 2. 按学科分组
 3. 只返回文字列表
 4. 明确提示可继续说“发送物理的复习内容”“发送所有复习内容”
@@ -94,7 +94,7 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 
 当用户说“复习完了”“今天的错题复习完了”“物理复习完了”时：
 
-1. 自动推断今天/学科/掌握情况
+1. 自动推断今天/学科（必要时补问）
 2. 优先批量更新
 3. 运行 `update-review.py`
 4. 返回更新数量、涉及学科、下次复习日期
