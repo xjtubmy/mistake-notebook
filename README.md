@@ -3,90 +3,68 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
-`mistake-notebook` 是一个面向中小学错题本工作流的 skill 仓库，覆盖错题录入、分类、复习、分析、导出和提醒。当前默认工作流是：
+面向中小学错题整理的 **Cursor / Claude Code skill**：把错题录入、艾宾浩斯间隔复习、导出、分析和每日提醒串成一套可持续流程。默认思路是「先对话、后脚本」——日常由自然语言驱动，底层由 `scripts/` 里的工具落地。
 
-1. 录入错题并补齐元数据
-2. 查询今日待复习内容，先返回文字列表
-3. 用户明确要求时再导出复习 PDF
-4. 用户说“复习完了”后自动更新复习进度
+## 能做什么
 
-## What It Includes
+| 方向 | 能力 |
+|------|------|
+| 录入与归档 | 从照片或文字整理错题，补齐 `type: mistake-record` 元数据（学科、知识点、错因等），落到 `data/mistake-notebook/` |
+| 复习节奏 | 按间隔复习（`review-round`、`due-date`）；全部轮次结束后用 `due-date: completed`（或 `done`）标记完成 |
+| 今日复习 | 查询「今天有什么要复习的」——先给文字列表，按需再导出 PDF |
+| 复习进度 | 说「复习完了」「物理复习完了」等，自动批量更新今日到期题目 |
+| 巩固与诊断 | 举一反三 / 变式题、薄弱知识点、综合分析、月度报告 |
+| 提醒 | 飞书、微信或 `crontab` 等渠道的每日复习提醒（可 dry-run 预览文案） |
 
-- 错题录入与归档
-- `type: mistake-record` frontmatter 说明
-- 复习提醒与批量更新
-- 举一反三、薄弱点分析、月报
-- 飞书/微信渠道的定时提醒配置
-- 课程映射、错误类型、学生档案模板等参考资料
+## 怎么用（自然语言）
 
-## Quick Start
+在已加载本 skill 的对话里，可以直接说意图，不必先记命令。常见说法例如：
 
-安装依赖：
+- **查今天**：「今天有什么要复习的？」「给我今天的错题复习提醒。」
+- **只要列表**：「先别发 PDF，按学科列一下今天要复习的题。」
+- **要资料**：「把物理今天要复习的导出成 PDF。」
+- **做完更新**：「今天的错题复习完了。」「数学那几道刚复习过，帮我更新进度。」
+- **录入**：「这道题拍下来了，帮我按八下目录归档并写好 frontmatter。」
+- **分析**：「跑一下薄弱知识点 TOP5。」「出一份上月错题月报。」
+
+具体触发词、回复里该包含什么（例如更新后要说明下次复习日），见 [docs/auto-review-update.md](docs/auto-review-update.md)。**给 AI 的完整行为规则**在 [SKILL.md](SKILL.md)。
+
+## 开发者与自助运行脚本
+
+若你要本地跑脚本、写 cron、或调试环境：
+
+- **依赖与故障排除**：[docs/requirements.md](docs/requirements.md)
+- **命令行示例**（导出 PDF、`update-review`、`daily-review-reminder` 等）：[examples.md](examples.md)
+- **目录约定与维护注意**：[reference.md](reference.md)
+
+首次建议在本机执行依赖检查（路径按你仓库里 skill 的实际位置调整）：
 
 ```bash
-pip install playwright markdown2 --break-system-packages
-playwright install chromium
+python3 path/to/mistake-notebook/scripts/check-deps.py
 ```
 
-检查环境：
+## 文档索引
 
-```bash
-python3 skills/mistake-notebook/scripts/check-deps.py
-```
+| 文件 | 内容 |
+|------|------|
+| [SKILL.md](SKILL.md) | 智能体运行时规则与工作流步骤 |
+| [reference.md](reference.md) | 默认约定、frontmatter、目录结构 |
+| [examples.md](examples.md) | 自然语言例句 + 脚本命令示例 |
+| [docs/auto-review-update.md](docs/auto-review-update.md) | 「复习提醒 / 复习完了」类意图与响应 |
+| [docs/review-update-guide.md](docs/review-update-guide.md) | 复习更新参数与反模式 |
+| [docs/cron-setup.md](docs/cron-setup.md) | 定时提醒与渠道配置 |
 
-几个常用命令：
-
-```bash
-# 导出复习 PDF
-python3 skills/mistake-notebook/scripts/export-printable.py --student <学生名> --subject physics --output exports/physics-review.pdf --format pdf
-
-# 生成薄弱点分析
-python3 skills/mistake-notebook/scripts/weak-points.py --student <学生名>
-
-# 批量更新今日复习
-python3 skills/mistake-notebook/scripts/update-review.py --student <学生名> --today
-
-# 预览今日复习提醒
-python3 skills/mistake-notebook/scripts/daily-review-reminder.py --student <学生名> --dry-run
-```
-
-## Read This First
-
-- [SKILL.md](SKILL.md)：运行时入口规则
-- [reference.md](reference.md)：维护约束、目录结构、反模式
-- [examples.md](examples.md)：高频自然语言例子与命令示例
-- [docs/requirements.md](docs/requirements.md)：依赖安装与常见环境问题
-- [docs/auto-review-update.md](docs/auto-review-update.md)：自然语言触发与自动响应
-- [docs/review-update-guide.md](docs/review-update-guide.md)：复习更新参数与最佳实践
-- [docs/cron-setup.md](docs/cron-setup.md)：定时提醒与渠道配置
-
-## Repository Layout
+## 仓库结构（简）
 
 ```text
 mistake-notebook/
-├── SKILL.md
+├── SKILL.md          # 智能体入口
 ├── reference.md
 ├── examples.md
-├── README.md
 ├── docs/
-│   ├── requirements.md
-│   ├── auto-review-update.md
-│   ├── review-update-guide.md
-│   ├── cron-setup.md
-│   └── plans/
-├── resources/
-│   ├── student-profile-template.md
-│   ├── error-types.md
-│   ├── similar-problems-template.md
-│   └── curriculum/
-└── scripts/
+├── resources/        # 模板、错因类型、课标映射等
+└── scripts/          # 导出、更新复习、提醒、分析等
 ```
-
-## Notes
-
-- 当前默认导出格式是 PDF，不是长图
-- `share.py`、`generate-image.py` 等历史脚本仍在仓库中，但不是默认工作流
-- 如果调整默认流程，记得同步更新 `SKILL.md`、`reference.md` 和相关 `docs/`
 
 ## License
 
