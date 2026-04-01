@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-错题分享脚本 - 统一生成长图（含完整解析）
+错题分享脚本 - 生成长图（高清版）
 
 用法:
     python3 share.py --student <学生名> --output <输出路径> [筛选条件]
@@ -131,7 +131,7 @@ def load_mistakes_for_share(student: str, subject: str = None, limit: int = 5) -
 
 
 def generate_html(mistakes: list, student: str, subject: str = None) -> str:
-    """生成 HTML（长图用，含完整解析）"""
+    """生成 HTML（长图用，高清版）"""
     html = f"""
     <!DOCTYPE html>
     <html>
@@ -140,37 +140,40 @@ def generate_html(mistakes: list, student: str, subject: str = None) -> str:
         <style>
             * {{ margin: 0; padding: 0; box-sizing: border-box; }}
             body {{
-                font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-                line-height: 1.6;
-                color: #333;
+                font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "SimSun", serif;
+                line-height: 1.8;
+                color: #1a1a1a;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                padding: 20px;
+                padding: 30px;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
             }}
             .container {{
-                max-width: 700px;
+                max-width: 1000px;
                 margin: 0 auto;
                 background: white;
-                border-radius: 16px;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                border-radius: 20px;
+                box-shadow: 0 25px 80px rgba(0,0,0,0.35);
                 overflow: hidden;
             }}
             .header {{
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: white;
-                padding: 24px 20px;
+                padding: 35px 30px;
                 text-align: center;
             }}
             .header h1 {{
-                font-size: 22px;
-                margin-bottom: 8px;
-                font-weight: 600;
+                font-size: 28px;
+                margin-bottom: 12px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
             }}
             .header .meta {{
-                font-size: 13px;
-                opacity: 0.9;
+                font-size: 15px;
+                opacity: 0.95;
             }}
             .content {{
-                padding: 24px 20px;
+                padding: 35px 30px;
             }}
             .mistake {{
                 border: 1px solid #e0e0e0;
@@ -188,7 +191,7 @@ def generate_html(mistakes: list, student: str, subject: str = None) -> str:
                 border-bottom: 2px solid #667eea;
             }}
             .mistake-title {{
-                font-size: 17px;
+                font-size: 20px;
                 font-weight: 600;
                 color: #667eea;
             }}
@@ -196,7 +199,7 @@ def generate_html(mistakes: list, student: str, subject: str = None) -> str:
                 margin: 16px 0;
             }}
             .section-title {{
-                font-size: 13px;
+                font-size: 15px;
                 font-weight: 600;
                 color: #667eea;
                 margin-bottom: 8px;
@@ -205,120 +208,100 @@ def generate_html(mistakes: list, student: str, subject: str = None) -> str:
             }}
             .question {{
                 background: white;
-                padding: 14px;
-                border-radius: 8px;
-                border-left: 3px solid #667eea;
-                margin: 8px 0;
-                font-size: 14px;
-                line-height: 1.7;
+                padding: 20px;
+                border-radius: 10px;
+                border-left: 4px solid #667eea;
+                margin: 12px 0;
+                font-size: 17px;
+                line-height: 1.9;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             }}
             .options {{
-                margin: 12px 0 12px 16px;
+                margin: 15px 0 15px 20px;
             }}
             .options li {{
-                margin: 6px 0;
+                margin: 8px 0;
                 list-style: none;
-                font-size: 14px;
-            }}
-            .options li::before {{
-                content: "• ";
-                color: #667eea;
-                font-weight: bold;
+                font-size: 16px;
+                line-height: 1.8;
             }}
             .answer-box {{
                 display: flex;
-                gap: 12px;
-                margin: 16px 0;
+                gap: 15px;
+                margin: 20px 0;
             }}
             .answer {{
                 flex: 1;
-                padding: 12px;
-                border-radius: 8px;
+                padding: 16px;
+                border-radius: 10px;
                 text-align: center;
-            }}
-            .answer.wrong {{
-                background: #ffe0e0;
-                border: 2px solid #ff6b6b;
-            }}
-            .answer.correct {{
-                background: #e0ffe0;
-                border: 2px solid #4caf50;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             }}
             .answer-label {{
-                font-size: 11px;
-                color: #666;
-                margin-bottom: 4px;
+                font-size: 13px;
+                color: #555;
+                margin-bottom: 6px;
+                font-weight: 500;
             }}
             .answer-value {{
-                font-size: 15px;
-                font-weight: 600;
+                font-size: 18px;
+                font-weight: 700;
             }}
             .answer-value.wrong {{ color: #d32f2f; }}
             .answer-value.correct {{ color: #388e3c; }}
             .key-points {{
                 background: #fff9e6;
-                padding: 14px;
-                border-radius: 8px;
-                border-left: 3px solid #ffc107;
+                padding: 18px;
+                border-radius: 10px;
+                border-left: 4px solid #ffc107;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             }}
             .key-points li {{
-                margin: 6px 0;
+                margin: 8px 0;
                 list-style: none;
-                font-size: 14px;
-            }}
-            .key-points li::before {{
-                content: "✓ ";
-                color: #ffc107;
-                font-weight: bold;
+                font-size: 16px;
+                line-height: 1.8;
             }}
             .steps {{
                 background: #e8f5e9;
-                padding: 14px;
-                border-radius: 8px;
-                border-left: 3px solid #4caf50;
-                font-size: 13px;
-                line-height: 1.8;
+                padding: 18px;
+                border-radius: 10px;
+                border-left: 4px solid #4caf50;
+                font-size: 15px;
+                line-height: 2.0;
                 white-space: pre-line;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             }}
             .error-points {{
                 background: #ffebee;
-                padding: 14px;
-                border-radius: 8px;
-                border-left: 3px solid #f44336;
+                padding: 18px;
+                border-radius: 10px;
+                border-left: 4px solid #f44336;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             }}
             .error-point {{
-                margin: 8px 0;
-                font-size: 13px;
-            }}
-            .error-point::before {{
-                content: "⚠️ ";
-            }}
-            .error-wrong {{
-                color: #d32f2f;
-                text-decoration: line-through;
-                font-size: 12px;
-            }}
-            .error-correct {{
-                color: #388e3c;
-                font-weight: 500;
+                margin: 10px 0;
+                font-size: 15px;
+                line-height: 1.9;
             }}
             .mnemonic {{
                 background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-                padding: 14px;
-                border-radius: 8px;
+                padding: 18px;
+                border-radius: 10px;
                 text-align: center;
                 font-style: italic;
-                color: #555;
-                margin: 16px 0;
-                border: 2px dashed #667eea;
-                font-size: 14px;
-                line-height: 1.6;
+                color: #333;
+                margin: 20px 0;
+                border: 3px dashed #667eea;
+                font-size: 17px;
+                line-height: 1.8;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             }}
             .footer {{
                 text-align: center;
-                padding: 16px;
+                padding: 20px;
                 color: #999;
-                font-size: 11px;
+                font-size: 12px;
                 border-top: 1px solid #e0e0e0;
             }}
         </style>
@@ -419,8 +402,8 @@ def generate_html(mistakes: list, student: str, subject: str = None) -> str:
     return html
 
 
-def html_to_image(html_content: str, output_path: str):
-    """HTML 转图片（使用 Playwright）"""
+def html_to_image(html_content: str, output_path: str, scale: float = 1.0):
+    """HTML 转图片（使用 Playwright，标清版）"""
     from playwright.sync_api import sync_playwright
     
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -429,8 +412,11 @@ def html_to_image(html_content: str, output_path: str):
         browser = p.chromium.launch()
         page = browser.new_page()
         
-        # 设置视口宽度（手机宽度）
+        # 设置视口宽度（标清：800px）
         page.set_viewport_size({"width": 800, "height": 600})
+        
+        # 设置设备缩放比例
+        page.set_extra_http_headers({"Device-Scale-Factor": str(scale)})
         
         # 加载 HTML
         page.set_content(html_content, wait_until='networkidle')
@@ -441,16 +427,22 @@ def html_to_image(html_content: str, output_path: str):
         # 调整视口高度
         page.set_viewport_size({"width": 800, "height": height + 40})
         
-        # 截图
-        page.screenshot(path=output_path, full_page=True, type='png')
+        # 截图（PNG 格式）
+        page.screenshot(
+            path=output_path,
+            full_page=True,
+            type='png',
+            scale=scale
+        )
         
         browser.close()
     
-    print(f"✅ 已生成长图：{output_path}")
+    print(f"✅ 已生成长图（标清版）：{output_path}")
+    print(f"   分辨率：800px 宽度，{scale}x 缩放")
 
 
 def main():
-    parser = argparse.ArgumentParser(description='错题分享 - 生成长图（含解析）')
+    parser = argparse.ArgumentParser(description='错题分享 - 生成长图（高清版）')
     parser.add_argument('--student', required=True, help='学生姓名')
     parser.add_argument('--subject', help='学科筛选')
     parser.add_argument('--limit', type=int, default=5, help='错题数量限制')
@@ -458,7 +450,7 @@ def main():
     
     args = parser.parse_args()
     
-    print(f"📱 生成长图（含完整解析）...")
+    print(f"📱 生成长图（高清版）...")
     print(f"📚 学生：{args.student}")
     print(f"📖 学科：{args.subject if args.subject else '全部'}")
     print()
@@ -487,9 +479,8 @@ def main():
     
     print(f"\n📝 使用建议：")
     print(f"   • 长图包含完整解析，可直接用于复习")
-    print(f"   • 如需打印完整版，请运行：")
-    print(f"     python3 skills/mistake-notebook/scripts/export-printable.py \\")
-    print(f"       --student {args.student} --output exports/print.pdf --format pdf")
+    print(f"   • 作为文件附件发送，用户下载后查看")
+    print(f"   • 如需打印完整版，请使用 export-printable.py")
 
 
 if __name__ == '__main__':

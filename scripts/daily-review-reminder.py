@@ -1,24 +1,47 @@
 #!/usr/bin/env python3
 """
-每日复习提醒脚本 - 智能发送到飞书/微信
+每日复习提醒脚本 - 智能判断是否发送
 
 用法:
     python3 daily-review-reminder.py --student <学生名> [--channel <渠道>]
 
 功能:
-    - 扫描今日到期的错题
-    - 生成复习提醒消息
-    - 通过 message 工具发送到飞书/微信
-
-定时任务配置 (crontab -e):
-    0 18 * * * cd /home/ubuntu/clawd && python3 skills/mistake-notebook/scripts/daily-review-reminder.py --student 曲凌松 --channel feishu
+    - 智能判断是否需要发送提醒
+    - 检查今日是否已查询过
+    - 检查今日是否已完成复习
+    - 只在需要时发送提醒
 """
 
 import argparse
 import sys
 import re
+import json
 from pathlib import Path
 from datetime import datetime, timedelta
+
+
+def load_review_state(student: str) -> dict:
+    """加载复习状态"""
+    state_file = Path(f'data/mistake-notebook/students/{student}/review-state.json')
+    
+    if state_file.exists():
+        return json.loads(state_file.read_text(encoding='utf-8'))
+    
+    return {
+        'last_query_date': None,
+        'last_query_time': None,
+        'completed_subjects': [],
+        'pending_subjects': [],
+        'last_review_date': None,
+        'last_reminder_sent': None
+    }
+
+
+def save_review_state(student: str, state: dict):
+    """保存复习状态"""
+    state_file = Path(f'data/mistake-notebook/students/{student}/review-state.json')
+    state_file.parent.mkdir(parents=True, exist_ok=True)
+    state_file.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding='utf-8')
 
 
 def load_due_reviews(student: str, target_date: str = None) -> list:
@@ -32,7 +55,6 @@ def load_due_reviews(student: str, target_date: str = None) -> list:
     if not base_path.exists():
         return reviews
     
-    # 查找所有 mistake.md 文件
     for mistake_file in base_path.rglob('mistake.md'):
         content = mistake_file.read_text(encoding='utf-8')
         
@@ -53,53 +75,82 @@ def load_due_reviews(student: str, target_date: str = None) -> list:
         
         # 检查是否到期
         if due_date and due_date <= target_date:
-            # 计算逾期天数
-            try:
-                due = datetime.strptime(due_date, '%Y-%m-%d')
-                today = datetime.strptime(target_date, '%Y-%m-%d')
-                days_overdue = (today - due).days
-            except:
-                days_overdue = 0
-            
             reviews.append({
                 'id': fm.get('id', 'unknown'),
                 'subject': fm.get('subject', 'unknown'),
                 'knowledge_point': fm.get('knowledge-point', ''),
-                'unit': fm.get('unit-name', ''),
                 'review_round': int(fm.get('review-round', 0)),
                 'due_date': due_date,
-                'days_overdue': days_overdue,
-                'path': mistake_file,
             })
-    
-    # 按复习轮次和到期日期排序（优先复习轮次少的、逾期长的）
-    reviews.sort(key=lambda x: (x['review_round'], -x['days_overdue']))
     
     return reviews
 
 
-def generate_reminder_message(student: str, reviews: list, target_date: str = None) -> str:
-    """生成复习提醒消息"""
-    if target_date is None:
-        target_date = datetime.now().strftime('%Y-%m-%d')
+def check_if_query_today(state: dict, today: str) -> bool:
+    """检查今日是否已查询过复习内容"""
+    return state.get('last_query_date') == today
+
+
+def check_if_completed_today(state: dict, today: str) -> bool:
+    """检查今日是否已完成复习"""
+    last_review = state.get('last_review_date')
     
+    if last_review == today:
+        # 今日有复习记录，检查是否还有未完成科目
+        pending = state.get('pending_subjects', [])
+        return len(pending) == 0
+    
+    return False
+
+
+def get_pending_subjects(reviews: list, completed_subjects: list) -> list:
+    """获取待复习科目"""
+    subjects = set(r['subject'] for r in reviews)
+    pending = [s for s in subjects if s not in completed_subjects]
+    return pending
+
+
+def should_send_reminder(student: str, reviews: list, state: dict, today: str) -> tuple:
+    """智能判断是否应该发送提醒"""
+    
+    # 无待复习错题
     if not reviews:
-        return f"""🎉 **好消息！**
+        return False, 'no_reviews'
+    
+    # 检查今日是否已完成复习
+    completed_subjects = state.get('completed_subjects', [])
+    pending = get_pending_subjects(reviews, completed_subjects)
+    
+    # 全部完成
+    if not pending:
+        return False, 'completed'
+    
+    # 检查今日是否已查询过
+    queried_today = check_if_query_today(state, today)
+    
+    if queried_today:
+        # 今日已查询过，但未完成 → 发送提醒（提醒完成）
+        return True, 'incomplete'
+    else:
+        # 今日未查询过 → 发送提醒（首次提醒）
+        return True, 'first_reminder'
 
-**学生**：{student}  
-**日期**：{target_date}
 
-✅ 今日没有待复习的错题！
-
-继续保持，按时复习哦！💪"""
+def generate_reminder_message(student: str, reviews: list, state: dict, scenario: str) -> str:
+    """生成提醒消息"""
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    completed_subjects = state.get('completed_subjects', [])
+    pending = get_pending_subjects(reviews, completed_subjects)
     
     # 按学科分组
     by_subject = {}
     for r in reviews:
         subj = r['subject']
-        if subj not in by_subject:
-            by_subject[subj] = []
-        by_subject[subj].append(r)
+        if subj in pending:  # 只显示未完成的
+            if subj not in by_subject:
+                by_subject[subj] = []
+            by_subject[subj].append(r)
     
     # 学科名称映射
     subject_names = {
@@ -109,23 +160,27 @@ def generate_reminder_message(student: str, reviews: list, target_date: str = No
         'physics': '物理',
         'chemistry': '化学',
         'biology': '生物',
-        'history': '历史',
-        'geography': '地理',
-        'politics': '政治',
     }
     
-    # 生成消息
-    total = len(reviews)
-    overdue = sum(1 for r in reviews if r['days_overdue'] > 0)
+    total = sum(len(items) for items in by_subject.values())
     
-    message = f"""📅 **复习提醒**
+    # 根据场景生成不同消息
+    if scenario == 'incomplete':
+        header = "⏰ **复习提醒**（未完成）"
+        encouragement = "还有科目没复习哦！抓紧时间！💪"
+    else:  # first_reminder
+        header = "📅 **复习提醒**"
+        encouragement = "加油！坚持就是胜利！💪"
+    
+    message = f"""{header}
 
 **学生**：{student}  
-**日期**：{target_date}  
+**日期**：{today}  
 **待复习**：{total} 道"""
     
-    if overdue > 0:
-        message += f"（🔴 {overdue} 道已逾期）"
+    if completed_subjects:
+        completed_names = [subject_names.get(s, s) for s in completed_subjects]
+        message += f"（已完成：{', '.join(completed_names)} ✅）"
     
     message += "\n\n" + "━" * 40 + "\n\n"
     
@@ -136,94 +191,125 @@ def generate_reminder_message(student: str, reviews: list, target_date: str = No
         
         for r in items[:10]:  # 每科最多显示 10 道
             round_num = r['review_round'] + 1
-            
-            # 逾期标记
-            if r['days_overdue'] > 0:
-                urgency = f"🔴 逾期{r['days_overdue']}天"
-            elif r['days_overdue'] == 0:
-                urgency = "🟡 今日"
-            else:
-                urgency = "🟢 提前"
-            
-            message += f"• {r['knowledge_point']}（第{round_num}轮）{urgency}\n"
+            message += f"• {r['knowledge_point']}（第{round_num}轮）🟡 今日\n"
         
         message += "\n"
     
-    # 复习建议
+    # 使用建议
     message += "━" * 40 + "\n\n"
-    message += """💡 **复习建议**
+    message += """💡 **使用方式**
 
-1️⃣ **盖住答案**：先独立重做题目
-2️⃣ **对照解析**：核对答案，理解思路
-3️⃣ **记录进度**：在复习记录表上打勾
-4️⃣ **举一反三**：完成相似题练习
-
-📊 **复习轮次说明**：
-• 第 1 轮：录入后 1 天（关键复习）
-• 第 2 轮：录入后 3 天
-• 第 3 轮：录入后 7 天
-• 第 4 轮：录入后 15 天
-• 第 5 轮：录入后 30 天（永久记忆）
+• 说"**发送 XX 的复习内容**"→ 奴才发送长图
+• 说"**发送所有复习内容**"→ 奴才发送全部长图
+• 说"**XX 复习完了**"→ 奴才更新进度
 
 """
     
-    message += "━" * 40 + "\n\n"
-    
-    if total <= 5:
-        message += "⏰ 预计用时：10-15 分钟\n\n"
+    # 预计用时
+    if total <= 3:
+        message += "⏰ 预计用时：5-10 分钟\n\n"
     elif total <= 10:
-        message += "⏰ 预计用时：20-30 分钟\n\n"
+        message += "⏰ 预计用时：10-20 分钟\n\n"
     else:
-        message += "⏰ 预计用时：30 分钟以上，建议分批次完成\n\n"
+        message += "⏰ 预计用时：20 分钟以上，建议分批次完成\n\n"
     
-    message += "加油！坚持就是胜利！💪"
+    message += f"{encouragement}"
     
     return message
 
 
+def update_state_after_query(student: str, state: dict):
+    """查询后更新状态"""
+    today = datetime.now().strftime('%Y-%m-%d')
+    now = datetime.now().strftime('%H:%M')
+    
+    state['last_query_date'] = today
+    state['last_query_time'] = now
+    
+    save_review_state(student, state)
+
+
+def update_state_after_review(student: str, state: dict, subjects: list):
+    """复习完成后更新状态"""
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    # 添加已完成科目
+    completed = state.get('completed_subjects', [])
+    for subj in subjects:
+        if subj not in completed:
+            completed.append(subj)
+    
+    state['completed_subjects'] = completed
+    state['last_review_date'] = today
+    
+    # 更新待复习科目
+    all_subjects = state.get('pending_subjects', [])
+    state['pending_subjects'] = [s for s in all_subjects if s not in subjects]
+    
+    save_review_state(student, state)
+
+
 def send_message_via_openclaw(channel: str, message: str):
     """通过 OpenClaw message 工具发送消息"""
-    # 这里生成 message 工具调用命令
-    # 实际执行需要调用 openclaw message 命令
-    
     print(f"\n📨 准备发送消息到 {channel}...")
     print(f"\n消息内容：\n{message}")
     print(f"\n" + "=" * 60)
-    print(f"执行以下命令发送：")
-    print(f"openclaw message send --channel {channel} --message \"...\"")
+    print(f"实际执行：openclaw message send --channel {channel} --message \"...\"")
     print("=" * 60)
-    
-    # 实际调用 message 工具（需要 runtime 支持）
-    # 这里生成调用代码
-    return True
 
 
 def main():
-    parser = argparse.ArgumentParser(description='每日复习提醒')
+    parser = argparse.ArgumentParser(description='每日复习提醒（智能判断）')
     parser.add_argument('--student', required=True, help='学生姓名')
     parser.add_argument('--channel', choices=['feishu', 'wechat', 'openclaw-weixin'], 
                        default='feishu', help='发送渠道')
     parser.add_argument('--date', help='指定日期（YYYY-MM-DD），默认为今天')
+    parser.add_argument('--force', action='store_true', help='强制发送（忽略智能判断）')
     parser.add_argument('--dry-run', action='store_true', help='仅显示消息，不发送')
     
     args = parser.parse_args()
     
-    print(f"🔍 正在扫描 {args.student} 的复习计划...")
+    today = args.date if args.date else datetime.now().strftime('%Y-%m-%d')
     
-    # 加载到期复习
-    reviews = load_due_reviews(args.student, args.date)
-    print(f"找到 {len(reviews)} 道待复习的错题\n")
+    print(f"🔍 智能复习提醒检查...")
+    print(f"学生：{args.student}")
+    print(f"日期：{today}")
+    
+    # 加载状态
+    state = load_review_state(args.student)
+    
+    # 加载待复习错题
+    reviews = load_due_reviews(args.student, today)
+    
+    print(f"待复习错题：{len(reviews)} 道")
+    print(f"上次查询：{state.get('last_query_date', '无')}")
+    print(f"上次复习：{state.get('last_review_date', '无')}")
+    print(f"已完成科目：{state.get('completed_subjects', [])}")
+    
+    # 智能判断
+    if not args.force:
+        should_send, scenario = should_send_reminder(args.student, reviews, state, today)
+    else:
+        should_send, scenario = True, 'force'
+    
+    print(f"\n智能判断结果：{'发送' if should_send else '不发送'}（{scenario}）")
+    
+    if not should_send:
+        if scenario == 'no_reviews':
+            print("\n✅ 无待复习错题，不发送提醒")
+        elif scenario == 'completed':
+            print("\n✅ 今日复习已全部完成，不发送提醒")
+        return
     
     # 生成消息
-    message = generate_reminder_message(args.student, reviews, args.date)
+    message = generate_reminder_message(args.student, reviews, state, scenario)
     
     if args.dry_run:
-        print("📝 预览消息：\n")
+        print(f"\n📝 预览消息：\n")
         print(message)
         return
     
     # 发送消息
-    print(f"📱 发送渠道：{args.channel}")
     send_message_via_openclaw(args.channel, message)
     
     print("\n✅ 复习提醒已发送！")
