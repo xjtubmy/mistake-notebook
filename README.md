@@ -5,13 +5,13 @@
 
 面向中小学错题整理的 **Cursor / Claude Code skill**：把错题录入、艾宾浩斯间隔复习、导出、分析和每日提醒串成一套可持续流程。默认思路是「先对话、后脚本」——日常由自然语言驱动，底层由 `scripts/` 里的工具落地。
 
-**Obsidian**：仓库内所有 `.md`（含 `SKILL.md`、`docs/`、`resources/`、示例与说明）均按常规 Markdown + YAML frontmatter 编写，与 Obsidian 兼容；可将本仓库或其中的 `data/mistake-notebook/` 错题目录作为（或并入）Obsidian 库，用 Obsidian 浏览、双向链接与编辑。脚本生成的检索结果、报告等同样为 Markdown，导入后亦可直接管理。
+**Obsidian**：写入 `data/mistake-notebook/` 的**错题笔记**按 Obsidian 习惯组织：文件开头的 YAML frontmatter 在 Obsidian 里可读作**属性（Properties）**，便于按学科、知识点、`due-date` 等筛选；与单元说明、学生档案、举一反三等关联处使用 **`[[wikilink]]`**，在库内形成**反向链接**与图谱。把该数据目录放进你的 vault 即可用 Obsidian 管理、编辑错题。
 
 ## 能做什么
 
 | 方向 | 能力 |
 |------|------|
-| 录入与归档 | 从照片或文字整理错题，补齐 `type: mistake-record` 元数据（学科、知识点、错因等），落到 `data/mistake-notebook/` |
+| 录入与归档 | 从照片或文字整理错题，补齐 `type: mistake-record` 元数据（学科、知识点、错因等），落到 `data/mistake-notebook/`；生成格式适配 Obsidian **Properties** 与 **`[[双向链接]]`** |
 | 复习节奏 | 按间隔复习（`review-round`、`due-date`）；全部轮次结束后用 `due-date: completed`（或 `done`）标记完成 |
 | 今日复习 | 查询「今天有什么要复习的」——先给文字列表，按需再导出 PDF |
 | 复习进度 | 说「复习完了」「物理复习完了」等，自动批量更新今日到期题目 |

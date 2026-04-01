@@ -7,7 +7,7 @@
 - 默认复习更新方式是用户自然语言触发，自动调用 `update-review.py`
 - 默认文案风格是亲和、直接、专业，不使用强人设称呼
 - `SKILL.md` 是运行时入口；本文件补充维护约束和结构说明
-- 文档与错题相关 Markdown 采用 Obsidian 友好写法（标准 Markdown、frontmatter、`[[wikilink]]` 等）；可整库或按需导入 Obsidian 管理与编辑
+- 生成的错题（`data/mistake-notebook/` 下 `type: mistake-record` 等）为 Obsidian 友好格式：frontmatter 即库内 **Properties**；正文与相关笔记使用 **`[[双向链接]]`**，支持反向链接与图谱
 
 ## Recommended Scripts
 

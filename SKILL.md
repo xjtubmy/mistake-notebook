@@ -57,6 +57,7 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 3. 补齐学科、年级/学段、学期/教材、单元、知识点、错误类型
 4. 如信息不完整，先问关键缺口
 5. 存入 `data/mistake-notebook/` 对应目录
+6. 文件格式需便于用户在 Obsidian 中使用：`---` 内字段作为 **Properties**，与单元、档案、举一反三等用 **`[[wikilink]]`** 建立双向链接
 
 需要时读取：
 
