@@ -3,6 +3,7 @@
 ## 单元映射参考
 
 ### 八年级（上）
+
 | 单元 | Module 范围 | 知识点 | 自定义分类建议 |
 |------|-----------|--------|---------------|
 | unit-01 | Module 1-2 | How to learn English, Experiences | 语法专项：现在完成时 |
@@ -13,6 +14,7 @@
 | unit-06 | Module 11-12 | Way of life, Help | 语法专项：情态动词 |
 
 ### 八年级（下）
+
 | 单元 | Module 范围 | 知识点 | 自定义分类建议 |
 |------|-----------|--------|---------------|
 | unit-01 | Module 1-2 | Feelings, Experiences | 语法专项：现在完成时（延续性） |
@@ -25,11 +27,14 @@
 ---
 
 ## 七年级（上）
+
 **Starter Units 1-3**
+
 - 打招呼、介绍自己
 - 字母、音标基础
 
 **Module 1-10**
+
 - My teacher and my friends
 - My English lesson
 - My school day
@@ -42,6 +47,7 @@
 - Spring Festival
 
 **语法重点**：
+
 - be 动词（am/is/are）
 - 名词复数
 - 人称代词、物主代词
@@ -50,7 +56,9 @@
 - 情态动词 can
 
 ## 七年级（下）
+
 **Module 1-12**
+
 - Lost and found
 - What are you going to do?
 - Making plans
@@ -65,6 +73,7 @@
 - Western music
 
 **语法重点**：
+
 - 一般将来时（be going to）
 - 一般过去时（规则/不规则动词）
 - 形容词比较级和最高级
@@ -72,7 +81,9 @@
 - 时间状语从句
 
 ## 八年级（上）
+
 **Module 1-12**
+
 - How to learn English
 - Experiences
 - Sports
@@ -87,6 +98,7 @@
 - Help
 
 **语法重点**：
+
 - 现在完成时（have/has done）
 - 过去进行时（was/were doing）
 - 动词不定式
@@ -94,7 +106,9 @@
 - 条件状语从句（if）
 
 ## 八年级（下）
+
 **Module 1-12**
+
 - Feelings and impressions
 - Experiences
 - Journey to space
@@ -109,6 +123,7 @@
 - Traditional life
 
 **语法重点**：
+
 - 现在完成时（延续性动词）
 - 被动语态（一般现在时/过去时）
 - 直接引语和间接引语
@@ -116,7 +131,9 @@
 - 状语从句（时间、条件、原因）
 
 ## 九年级（上）
+
 **Module 1-12**
+
 - Wonders of the world
 - Public holidays
 - Family life
@@ -131,6 +148,7 @@
 - Traditional stories
 
 **语法重点**：
+
 - 被动语态（各种时态）
 - 定语从句（whose/whom）
 - 间接疑问句
@@ -138,7 +156,9 @@
 - 构词法
 
 ## 九年级（下）
+
 **Module 1-12**
+
 - Travel
 - Education
 - Life now and then
@@ -150,6 +170,7 @@
 - Revising and testing
 
 **语法重点**：
+
 - 复习所有时态
 - 虚拟语气（初步）
 - 非谓语动词
@@ -160,16 +181,19 @@
 ## 知识点分类
 
 ### 词汇
+
 - 名词、动词、形容词、副词
 - 短语搭配、固定表达
 
 ### 语法
+
 - 时态（8 大时态）
 - 语态（主动/被动）
 - 从句（宾语从句、定语从句、状语从句）
 - 非谓语动词
 
 ### 题型
+
 - 听力
 - 单选
 - 完形填空
@@ -183,6 +207,7 @@
 ## 使用方式
 
 录入错题时，知识点格式：
-- **名称**：`现在完成时 `、` 定语从句`、` 阅读理解 - 主旨大意`
-- **类型**：`语法 `、` 词汇`、` 题型`
-- **年级**：`middle-8`
+
+- 名称：`现在完成时`、`定语从句`、`阅读理解 - 主旨大意`
+- 类型：`语法`、`词汇`、`题型`
+- 年级：`middle-8`
