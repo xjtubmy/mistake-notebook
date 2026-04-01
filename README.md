@@ -5,6 +5,8 @@
 
 面向中小学错题整理的 **Cursor / Claude Code skill**：把错题录入、艾宾浩斯间隔复习、导出、分析和每日提醒串成一套可持续流程。默认思路是「先对话、后脚本」——日常由自然语言驱动，底层由 `scripts/` 里的工具落地。
 
+**Obsidian**：仓库内所有 `.md`（含 `SKILL.md`、`docs/`、`resources/`、示例与说明）均按常规 Markdown + YAML frontmatter 编写，与 Obsidian 兼容；可将本仓库或其中的 `data/mistake-notebook/` 错题目录作为（或并入）Obsidian 库，用 Obsidian 浏览、双向链接与编辑。脚本生成的检索结果、报告等同样为 Markdown，导入后亦可直接管理。
+
 ## 能做什么
 
 | 方向 | 能力 |
