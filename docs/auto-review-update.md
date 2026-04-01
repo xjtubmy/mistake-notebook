@@ -40,7 +40,7 @@
 处理步骤：
 
 1. 识别为复习更新意图
-2. 从上下文推断学生、学科、掌握情况
+2. 从上下文推断学生、学科
 3. 调用 `update-review.py`
 4. 返回更新数量、学科统计、下次复习日期
 
@@ -49,8 +49,7 @@
 ```bash
 python3 skills/mistake-notebook/scripts/update-review.py \
   --student <学生姓名> \
-  --today \
-  --mastered good
+  --today
 ```
 
 ## Response Templates

@@ -14,9 +14,16 @@
 import argparse
 import os
 import re
+import sys
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+import mistake_srs as srs
 
 try:
     import yaml
@@ -122,18 +129,25 @@ def generate_report(student: str, mistakes: list, subject: str = None) -> str:
         by_status[fm.get('status', 'unknown')] += 1
         by_difficulty[fm.get('difficulty', '⭐')] += 1
         
-        # 检查是否需要复习
-        due_date = fm.get('due-date', '')
-        if due_date:
-            due_date_str = str(due_date) if not isinstance(due_date, str) else due_date
-            if due_date_str <= now[:10] and fm.get('mastered') != True:
-                due_reviews.append({
-                    'id': fm.get('id', 'unknown'),
-                    'knowledge_point': fm.get('knowledge-point', ''),
-                    'due_date': due_date_str,
-                    'review_round': fm.get('review-round', 0),
-                    'path': m['path']
-                })
+        # 待复习：与 update-review / daily-reminder 一致；第 0 轮用 created+1 作为到期日
+        fm_sched = srs.parse_frontmatter(m['content'])
+        if not srs.due_date_is_scheduled(fm_sched):
+            continue
+        due_date_str = srs.effective_due_date_for_queue(fm_sched)
+        if not due_date_str:
+            continue
+        try:
+            datetime.strptime(due_date_str, '%Y-%m-%d')
+        except ValueError:
+            continue
+        if due_date_str <= now[:10]:
+            due_reviews.append({
+                'id': fm.get('id', 'unknown'),
+                'knowledge_point': fm.get('knowledge-point', ''),
+                'due_date': due_date_str,
+                'review_round': fm.get('review-round', 0),
+                'path': m['path']
+            })
     
     # 生成报告
     report = f"""---

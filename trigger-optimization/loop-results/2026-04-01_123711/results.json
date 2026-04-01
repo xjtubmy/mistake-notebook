@@ -19,7 +19,7 @@
       "train_total": 12,
       "train_results": [
         {
-          "query": "数学错题 id 20260331-001 复习完了，掌握得一般。用 update-review 批量更新今日数学并把 mastered 标成一般，下次复习日期按艾宾浩斯算好告诉我。",
+          "query": "数学错题 id 20260331-001 复习完了，掌握得一般。用 update-review 批量更新今日数学，下次复习日期按艾宾浩斯算好告诉我。",
           "should_trigger": true,
           "trigger_rate": 0.0,
           "triggers": 0,
@@ -189,7 +189,7 @@
       "total": 12,
       "results": [
         {
-          "query": "数学错题 id 20260331-001 复习完了，掌握得一般。用 update-review 批量更新今日数学并把 mastered 标成一般，下次复习日期按艾宾浩斯算好告诉我。",
+          "query": "数学错题 id 20260331-001 复习完了，掌握得一般。用 update-review 批量更新今日数学，下次复习日期按艾宾浩斯算好告诉我。",
           "should_trigger": true,
           "trigger_rate": 0.0,
           "triggers": 0,
@@ -302,7 +302,7 @@
           "pass": false
         },
         {
-          "query": "数学错题 id 20260331-001 复习完了，掌握得一般。用 update-review 批量更新今日数学并把 mastered 标成一般，下次复习日期按艾宾浩斯算好告诉我。",
+          "query": "数学错题 id 20260331-001 复习完了，掌握得一般。用 update-review 批量更新今日数学，下次复习日期按艾宾浩斯算好告诉我。",
           "should_trigger": true,
           "trigger_rate": 0.0,
           "triggers": 0,
@@ -472,7 +472,7 @@
           "pass": false
         },
         {
-          "query": "数学错题 id 20260331-001 复习完了，掌握得一般。用 update-review 批量更新今日数学并把 mastered 标成一般，下次复习日期按艾宾浩斯算好告诉我。",
+          "query": "数学错题 id 20260331-001 复习完了，掌握得一般。用 update-review 批量更新今日数学，下次复习日期按艾宾浩斯算好告诉我。",
           "should_trigger": true,
           "trigger_rate": 0.0,
           "triggers": 0,
@@ -577,7 +577,7 @@
           "pass": false
         },
         {
-          "query": "数学错题 id 20260331-001 复习完了，掌握得一般。用 update-review 批量更新今日数学并把 mastered 标成一般，下次复习日期按艾宾浩斯算好告诉我。",
+          "query": "数学错题 id 20260331-001 复习完了，掌握得一般。用 update-review 批量更新今日数学，下次复习日期按艾宾浩斯算好告诉我。",
           "should_trigger": true,
           "trigger_rate": 1.0,
           "triggers": 1,
@@ -747,7 +747,7 @@
           "pass": false
         },
         {
-          "query": "数学错题 id 20260331-001 复习完了，掌握得一般。用 update-review 批量更新今日数学并把 mastered 标成一般，下次复习日期按艾宾浩斯算好告诉我。",
+          "query": "数学错题 id 20260331-001 复习完了，掌握得一般。用 update-review 批量更新今日数学，下次复习日期按艾宾浩斯算好告诉我。",
           "should_trigger": true,
           "trigger_rate": 1.0,
           "triggers": 1,

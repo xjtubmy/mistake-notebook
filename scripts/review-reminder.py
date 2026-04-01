@@ -12,9 +12,16 @@
 """
 
 import argparse
+import sys
 from pathlib import Path
 from datetime import datetime, timedelta
 import re
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+import mistake_srs as srs
 
 
 def parse_frontmatter(content: str) -> dict:
@@ -53,16 +60,15 @@ def get_due_reviews(student: str, target_date: str = None) -> list:
     # 查找所有 mistake.md 文件
     for mistake_file in base_path.rglob('mistake.md'):
         content = mistake_file.read_text(encoding='utf-8')
-        frontmatter = parse_frontmatter(content)
-        
-        # 跳过已掌握的
-        if frontmatter.get('mastered') == True:
+        fm_sched = srs.parse_frontmatter(content)
+
+        if not srs.due_date_is_scheduled(fm_sched):
             continue
-        
-        due_date = frontmatter.get('due-date', '')
-        
-        # 检查是否到期
+
+        due_date = srs.effective_due_date_for_queue(fm_sched)
+
         if due_date and due_date <= target_date:
+            frontmatter = parse_frontmatter(content)
             reviews.append({
                 'id': frontmatter.get('id', 'unknown'),
                 'subject': frontmatter.get('subject', 'unknown'),

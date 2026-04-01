@@ -19,8 +19,7 @@
 ```bash
 python3 skills/mistake-notebook/scripts/update-review.py \
   --student 曲凌松 \
-  --today \
-  --mastered good
+  --today
 ```
 
 ## Subject-Scoped Batch Update
@@ -29,8 +28,7 @@ python3 skills/mistake-notebook/scripts/update-review.py \
 python3 skills/mistake-notebook/scripts/update-review.py \
   --student 曲凌松 \
   --today \
-  --subject physics \
-  --mastered good
+  --subject physics
 ```
 
 ## Single-Record Update
@@ -41,8 +39,7 @@ python3 skills/mistake-notebook/scripts/update-review.py \
 python3 skills/mistake-notebook/scripts/update-review.py \
   --student 曲凌松 \
   --id 20260331-001 \
-  --round 1 \
-  --mastered good
+  --round 1
 ```
 
 ## Parameter Notes
@@ -51,18 +48,8 @@ python3 skills/mistake-notebook/scripts/update-review.py \
 |------|------|
 | `--today` | 更新今日到期的所有错题 |
 | `--subject <学科>` | 按学科筛选 |
-| `--mastered <poor/fair/good/excellent>` | 记录掌握情况 |
 | `--id <错题 ID>` | 更新单题 |
 | `--round <轮次>` | 配合单题更新使用 |
-
-## Mastered Guidance
-
-| 值 | 说明 |
-|----|------|
-| `poor` | 很差，需要更快回顾 |
-| `fair` | 一般，需要正常继续复习 |
-| `good` | 良好，默认值 |
-| `excellent` | 优秀，可视情况减少重复 |
 
 ## Response Expectations
 

@@ -19,7 +19,7 @@
 | 分析报告 | `analyze.py` | 综合分析 |
 | 月度报告 | `monthly-report.py` | 月报 |
 | 每日提醒 | `daily-review-reminder.py` | 支持 `--dry-run` 和消息渠道 |
-| 复习进度更新 | `update-review.py` | 今日/按学科/按掌握情况更新 |
+| 复习进度更新 | `update-review.py` | 今日/按学科批量或单题更新 |
 
 ## Legacy But Not Default
 
@@ -62,9 +62,14 @@ created: 2026-03-31
 updated: 2026-03-31
 due-date: 2026-04-01
 review-round: 0
-mastered: false
 ---
 ```
+
+### `due-date` 与 SRS 完成（重要）
+
+- **`due-date`**：下一轮到期的复习日；完成全部间隔后应写成 `completed`（或历史数据里的 `done`），此后不再进入「今日待复习」列表。不再使用 `mastered` 字段；脚本写回时会顺带删除旧的 `mastered:` 行。
+- **第一轮（`review-round: 0`）**：待复习队列里的到期日**严格**按 `created` 日期 **+1 天** 计算，与文件里旧的 `due-date` 不一致时，以 `created+1` 为准。需要把 frontmatter 改一致时运行：  
+  `python3 skills/mistake-notebook/scripts/update-review.py --student <姓名> --fix-first-due`
 
 ## Directory Layout
 

@@ -43,13 +43,15 @@ def load_recent_mistakes(student: str, days: int = 7) -> list:
         
         created = fm.get('created', '')
         if created >= cutoff_date:
+            due_low = (fm.get('due-date') or '').strip().lower()
+            srs_complete = due_low in ('completed', 'done')
             mistakes.append({
                 'id': fm.get('id', 'unknown'),
                 'subject': fm.get('subject', 'unknown'),
                 'knowledge_point': fm.get('knowledge-point', '未知'),
                 'error_type': fm.get('error-type', '未分类'),
                 'created': created,
-                'mastered': fm.get('mastered', 'false') == 'true',
+                'srs_complete': srs_complete,
             })
     
     return mistakes
@@ -58,7 +60,7 @@ def load_recent_mistakes(student: str, days: int = 7) -> list:
 def generate_parent_brief(student: str, mistakes: list, days: int = 7) -> str:
     """生成家长简报"""
     total = len(mistakes)
-    mastered = sum(1 for m in mistakes if m['mastered'])
+    srs_done_count = sum(1 for m in mistakes if m['srs_complete'])
     by_subject = defaultdict(int)
     
     for m in mistakes:
@@ -87,8 +89,8 @@ def generate_parent_brief(student: str, mistakes: list, days: int = 7) -> str:
 📈 总体情况
 
 • 新增错题：{total} 道
-• 已掌握：{mastered} 道
-• 待复习：{total - mastered} 道
+• 已完成全部复习轮次：{srs_done_count} 道
+• 待复习：{total - srs_done_count} 道
 
 """
     
@@ -117,8 +119,8 @@ def generate_parent_brief(student: str, mistakes: list, days: int = 7) -> str:
         
         brief += f"1️⃣ 重点科目：{subj_name}（{top_subject[1]}道错题）\n\n"
         
-        if total - mastered > 0:
-            brief += f"2️⃣ 及时复习：还有 {total - mastered} 道错题待复习\n\n"
+        if total - srs_done_count > 0:
+            brief += f"2️⃣ 及时复习：还有 {total - srs_done_count} 道错题待复习\n\n"
         
         brief += "3️⃣ 建议：每天花 10 分钟回顾错题\n"
     

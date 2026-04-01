@@ -82,8 +82,13 @@ python3 skills/mistake-notebook/scripts/export-printable.py \
 ```bash
 python3 skills/mistake-notebook/scripts/update-review.py \
   --student 曲凌松 \
-  --today \
-  --mastered good
+  --today
+```
+
+### 校正第一轮 due-date（与 created+1 对齐）
+
+```bash
+python3 skills/mistake-notebook/scripts/update-review.py --student 曲凌松 --fix-first-due
 ```
 
 ### 按学科更新复习
@@ -92,8 +97,7 @@ python3 skills/mistake-notebook/scripts/update-review.py \
 python3 skills/mistake-notebook/scripts/update-review.py \
   --student 曲凌松 \
   --today \
-  --subject physics \
-  --mastered good
+  --subject physics
 ```
 
 ### 生成薄弱点分析

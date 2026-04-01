@@ -14,10 +14,15 @@
 
 import argparse
 import sys
-import re
 import json
 from pathlib import Path
 from datetime import datetime, timedelta
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+import mistake_srs as srs
 
 
 def load_review_state(student: str) -> dict:
@@ -57,29 +62,19 @@ def load_due_reviews(student: str, target_date: str = None) -> list:
     
     for mistake_file in base_path.rglob('mistake.md'):
         content = mistake_file.read_text(encoding='utf-8')
-        
-        # 解析 YAML Frontmatter
-        fm = {}
-        match = re.search(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
-        if match:
-            for line in match.group(1).strip().split('\n'):
-                if ':' in line:
-                    key, value = line.split(':', 1)
-                    fm[key.strip()] = value.strip()
-        
-        # 跳过已掌握的
-        if fm.get('mastered') == 'true':
+        fm = srs.parse_frontmatter(content)
+
+        if not srs.due_date_is_scheduled(fm):
             continue
-        
-        due_date = fm.get('due-date', '')
-        
-        # 检查是否到期
+
+        due_date = srs.effective_due_date_for_queue(fm)
+
         if due_date and due_date <= target_date:
             reviews.append({
                 'id': fm.get('id', 'unknown'),
                 'subject': fm.get('subject', 'unknown'),
                 'knowledge_point': fm.get('knowledge-point', ''),
-                'review_round': int(fm.get('review-round', 0)),
+                'review_round': int(fm.get('review-round', 0) or 0),
                 'due_date': due_date,
             })
     

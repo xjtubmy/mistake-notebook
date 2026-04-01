@@ -44,7 +44,7 @@ python3 skills/mistake-notebook/scripts/export-printable.py --student <学生名
 python3 skills/mistake-notebook/scripts/weak-points.py --student <学生名>
 
 # 批量更新今日复习
-python3 skills/mistake-notebook/scripts/update-review.py --student <学生名> --today --mastered good
+python3 skills/mistake-notebook/scripts/update-review.py --student <学生名> --today
 
 # 预览今日复习提醒
 python3 skills/mistake-notebook/scripts/daily-review-reminder.py --student <学生名> --dry-run

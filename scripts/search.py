@@ -12,7 +12,7 @@
     --subject <学科>       按学科筛选
     --status <状态>        按状态筛选
     --unit <单元>          按单元筛选
-    --unread              仅显示未掌握的
+    --unread              仅显示仍在 SRS 排程中的（未完成全部轮次）
 
 功能:
     - 多维度筛选错题
@@ -21,9 +21,16 @@
 """
 
 import argparse
+import sys
 from pathlib import Path
 from datetime import datetime
 import re
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+import mistake_srs as srs  # noqa: E402
 
 
 def parse_frontmatter(content: str) -> dict:
@@ -110,7 +117,8 @@ def search_mistakes(student: str, filters: dict) -> list:
                 match = False
         
         if filters.get('unread', False):
-            if frontmatter.get('mastered') == True:
+            due = str(frontmatter.get('due-date', '')).strip().lower()
+            if due in ('completed', 'done', 'none', ''):
                 match = False
         
         if match:
@@ -128,7 +136,7 @@ def search_mistakes(student: str, filters: dict) -> list:
                 'difficulty': frontmatter.get('difficulty', ''),
                 'created': frontmatter.get('created', ''),
                 'review_round': frontmatter.get('review-round', 0),
-                'mastered': frontmatter.get('mastered', False),
+                'srs_complete': srs.srs_complete(frontmatter),
                 'path': mistake_file
             })
     
@@ -206,7 +214,7 @@ generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 """
         for r in results:
             rel_path = r['path'].relative_to(Path(f'data/mistake-notebook/students/{student}'))
-            status_icon = '✅' if r['mastered'] else '🟡'
+            status_icon = '✅' if r['srs_complete'] else '🟡'
             content += f"| {r['created']} | {r['id']} | {r['subject']} | {r['knowledge_point']} | {r['error_type']} | {status_icon} {r['status']} | [[{rel_path}]] |\n"
     else:
         content += "未找到符合条件的错题。\n"

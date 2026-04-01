@@ -2,18 +2,24 @@
 """
 复习进度更新脚本（支持单题和批量更新）
 
+待复习列表：到期日 <= 今天 且仍在 SRS 中；`review-round: 0` 时到期日严格为 `created + 1 天`（与文件里旧 due-date 无关，可用 `--fix-first-due` 写回）。
+批量 `--today`：每道题 `review-round` 自增 1 并写回下一 `due-date`，不再使用固定 `--round`。完成全部轮次时 `due-date: completed`，不再维护 `mastered` 字段。
+
 用法:
     # 单题更新
-    python3 update-review.py --student 曲凌松 --id 20260331-001 --round 1 --mastered good
+    python3 update-review.py --student 曲凌松 --id 20260331-001 --round 1
     
     # 批量更新 - 一键完成今日所有复习
-    python3 update-review.py --student 曲凌松 --today --mastered good
+    python3 update-review.py --student 曲凌松 --today
     
     # 批量更新 - 按学科
-    python3 update-review.py --student 曲凌松 --today --subject physics --mastered good
+    python3 update-review.py --student 曲凌松 --today --subject physics
     
     # 交互式更新
     python3 update-review.py --student 曲凌松 --interactive
+
+    # 把所有 review-round 0 的 due-date 校正为 created+1 天
+    python3 update-review.py --student 曲凌松 --fix-first-due
 """
 
 import argparse
@@ -23,9 +29,18 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from collections import defaultdict
 
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
 
-# 艾宾浩斯复习间隔（天）
-REVIEW_INTERVALS = [1, 3, 7, 15, 30]
+import mistake_srs as srs
+
+REVIEW_INTERVALS = srs.REVIEW_INTERVALS
+
+
+def _strip_mastered_frontmatter(content: str) -> str:
+    """移除已废弃的 mastered 行（每次写回错题时顺带清理）。"""
+    return re.sub(r'^mastered:\s*.*\n?', '', content, flags=re.MULTILINE)
 
 
 def find_mistake_file(student: str, mistake_id: str) -> Path:
@@ -53,21 +68,13 @@ def load_due_reviews(student: str, target_date: str = None, subject: str = None)
     
     for mistake_file in base_path.rglob('mistake.md'):
         content = mistake_file.read_text(encoding='utf-8')
-        
-        # 解析 YAML Frontmatter
-        fm = {}
-        match = re.search(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
-        if match:
-            for line in match.group(1).strip().split('\n'):
-                if ':' in line:
-                    key, value = line.split(':', 1)
-                    fm[key.strip()] = value.strip()
-        
-        # 跳过已掌握的
-        if fm.get('mastered') == 'true':
+        fm = srs.parse_frontmatter(content)
+
+        # 只有 SRS 结束（due-date 为 completed 等）才不再进入待复习列表。
+        if not srs.due_date_is_scheduled(fm):
             continue
-        
-        due_date = fm.get('due-date', '')
+
+        due_date = srs.effective_due_date_for_queue(fm)
         
         # 学科筛选
         if subject and fm.get('subject') != subject:
@@ -87,7 +94,7 @@ def load_due_reviews(student: str, target_date: str = None, subject: str = None)
                 'subject': fm.get('subject', 'unknown'),
                 'knowledge_point': fm.get('knowledge-point', ''),
                 'unit': fm.get('unit-name', ''),
-                'review_round': int(fm.get('review-round', 0)),
+                'review_round': int(fm.get('review-round', 0) or 0),
                 'due_date': due_date,
                 'days_overdue': days_overdue,
                 'path': mistake_file,
@@ -97,11 +104,56 @@ def load_due_reviews(student: str, target_date: str = None, subject: str = None)
     return reviews
 
 
-def update_mistake_file(mistake_file: Path, review_round: int, mastered: str = None) -> tuple:
+def fix_first_round_due_dates(student: str, dry_run: bool = False) -> int:
+    """将 review-round 为 0 的错题的 due-date 写为 created+1 天（与队列规则一致）。"""
+    changed = 0
+    base_path = Path(f'data/mistake-notebook/students/{student}/mistakes')
+    if not base_path.exists():
+        return 0
+    for mistake_file in base_path.rglob('mistake.md'):
+        content = mistake_file.read_text(encoding='utf-8')
+        fm = srs.parse_frontmatter(content)
+        try:
+            rr = int(fm.get('review-round', 0) or 0)
+        except ValueError:
+            continue
+        if rr != 0:
+            continue
+        canon = srs.first_round_due_str(fm)
+        if not canon:
+            continue
+        current = (fm.get('due-date') or '').strip()
+        if current == canon:
+            continue
+        changed += 1
+        print(f"{'[dry-run] ' if dry_run else ''}{mistake_file}: due-date {current!r} -> {canon}")
+        if dry_run:
+            continue
+        if re.search(r'^due-date:\s*', content, re.MULTILINE):
+            newc = re.sub(r'^due-date:\s*.*$', f'due-date: {canon}', content, flags=re.MULTILINE)
+        else:
+            ins = re.search(r'^---\s*\n', content, re.MULTILINE)
+            if not ins:
+                continue
+            pos = ins.end()
+            newc = content[:pos] + f'due-date: {canon}\n' + content[pos:]
+        mistake_file.write_text(_strip_mastered_frontmatter(newc), encoding='utf-8')
+    return changed
+
+
+def update_mistake_file(mistake_file: Path, review_round: int) -> tuple:
     """更新错题文件"""
     content = mistake_file.read_text(encoding='utf-8')
-    
-    if review_round < len(REVIEW_INTERVALS):
+    fm = srs.parse_frontmatter(content)
+
+    # 第一轮（写入后仍为 review-round 0）：到期日严格为 created + 1 天，不跟「今天」走。
+    if review_round == 0:
+        created_dt = srs.parse_created_date(fm.get('created'))
+        if created_dt:
+            next_review_str = (created_dt + timedelta(days=1)).strftime('%Y-%m-%d')
+        else:
+            next_review_str = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+    elif review_round < len(REVIEW_INTERVALS):
         next_interval = REVIEW_INTERVALS[review_round]
         next_review = datetime.now() + timedelta(days=next_interval)
         next_review_str = next_review.strftime('%Y-%m-%d')
@@ -110,25 +162,23 @@ def update_mistake_file(mistake_file: Path, review_round: int, mastered: str = N
     
     content = re.sub(r'review-round: \d+', f'review-round: {review_round}', content)
     content = re.sub(r'due-date: \S+', f'due-date: {next_review_str}', content)
-    
-    if mastered:
-        mastered_value = 'true' if mastered in ['good', 'excellent', '5', '4'] else 'false'
-        content = re.sub(r'mastered: (true|false)', f'mastered: {mastered_value}', content)
-    
+    content = _strip_mastered_frontmatter(content)
+
     mistake_file.write_text(content, encoding='utf-8')
     return True, next_review_str
 
 
-def batch_update(reviews: list, review_round: int, mastered: str = None) -> dict:
-    """批量更新"""
+def batch_update(reviews: list) -> dict:
+    """批量更新：每道题在自身 review-round 基础上 +1，并写回下一 due-date。"""
     stats = defaultdict(int)
     for r in reviews:
         stats[r['subject']] += 1
-        update_mistake_file(r['path'], review_round, mastered)
+        new_round = int(r['review_round']) + 1
+        update_mistake_file(r['path'], new_round)
     return stats
 
 
-def print_summary(stats: dict, review_round: int, mastered: str):
+def print_summary(stats: dict):
     """打印汇总"""
     total = sum(stats.values())
     print("\n" + "=" * 60)
@@ -137,11 +187,7 @@ def print_summary(stats: dict, review_round: int, mastered: str):
     print(f"更新错题数：{total} 道")
     for subj, count in sorted(stats.items()):
         print(f"  • {subj}: {count} 道")
-    if review_round < len(REVIEW_INTERVALS):
-        print(f"\n下次复习日期：{(datetime.now() + timedelta(days=REVIEW_INTERVALS[review_round])).strftime('%Y-%m-%d')}")
-    else:
-        print(f"\n🎉 已完成全部 5 轮复习，永久掌握！")
-    print(f"掌握情况：{mastered}")
+    print("\n每道题已在原 review-round 基础上 +1，并按艾宾浩斯间隔写入新的 due-date。")
     print("=" * 60)
 
 
@@ -150,14 +196,19 @@ def main():
     parser.add_argument('--student', required=True, help='学生姓名')
     parser.add_argument('--id', help='错题 ID（单题更新时使用）')
     parser.add_argument('--round', type=int, default=1, help='复习轮次（0-5）')
-    parser.add_argument('--mastered', choices=['poor', 'fair', 'good', 'excellent'],
-                       default='good', help='掌握情况')
     parser.add_argument('--today', action='store_true', help='更新今日到期的错题')
     parser.add_argument('--subject', help='按学科筛选')
     parser.add_argument('--interactive', action='store_true', help='交互式更新')
     parser.add_argument('--dry-run', action='store_true', help='预览模式')
+    parser.add_argument('--fix-first-due', action='store_true',
+                        help='将 review-round 0 的 due-date 校正为 created+1 天')
     
     args = parser.parse_args()
+
+    if args.fix_first_due:
+        n = fix_first_round_due_dates(args.student, args.dry_run)
+        print(f"\n共 {n} 个文件{'（dry-run 未写入）' if args.dry_run else '已更新'}")
+        return
     
     # 单题更新模式
     if args.id:
@@ -171,12 +222,12 @@ def main():
         print(f"✅ 找到错题：{mistake_file}")
         
         if not args.dry_run:
-            success, next_review = update_mistake_file(mistake_file, args.round, args.mastered)
+            success, next_review = update_mistake_file(mistake_file, args.round)
             if success:
                 print(f"\n✅ 复习进度已更新！")
                 print(f"   下次复习日期：{next_review}")
         else:
-            print(f"\n🚫 预览模式：将更新为第{args.round}轮，掌握情况：{args.mastered}")
+            print(f"\n🚫 预览模式：将更新为第{args.round}轮")
         return
     
     # 批量更新模式
@@ -208,11 +259,8 @@ def main():
                 print(f"  • {r['id']} - {r['knowledge_point']} (第{r['review_round']+1}轮) {urgency}")
         
         print("\n" + "=" * 60)
-        print(f"更新参数:")
-        print(f"  复习轮次：{args.round}")
-        print(f"  掌握情况：{args.mastered}")
-        if args.round < len(REVIEW_INTERVALS):
-            print(f"  下次复习：{(datetime.now() + timedelta(days=REVIEW_INTERVALS[args.round])).strftime('%Y-%m-%d')}")
+        print("更新参数:")
+        print("  复习轮次：每道题在各自当前轮次上 +1（不再使用固定 --round）")
         print("=" * 60)
         
         if args.dry_run:
@@ -220,22 +268,26 @@ def main():
             return
         
         # 执行批量更新
-        stats = batch_update(reviews, args.round, args.mastered)
-        print_summary(stats, args.round, args.mastered)
+        stats = batch_update(reviews)
+        print_summary(stats)
         return
     
     print("❌ 请指定更新方式：")
     print("  单题更新：--id <错题 ID> --round <轮次>")
-    print("  批量更新：--today --mastered good")
+    print("  批量更新：--today")
+    print("  校正第一轮 due-date：--fix-first-due")
     print("\n使用示例：")
     print("  # 单题更新")
-    print("  python3 update-review.py --student 曲凌松 --id 20260331-001 --round 1 --mastered good")
+    print("  python3 update-review.py --student 曲凌松 --id 20260331-001 --round 1")
     print()
     print("  # 批量更新（一键完成今日所有复习）")
-    print("  python3 update-review.py --student 曲凌松 --today --mastered good")
+    print("  python3 update-review.py --student 曲凌松 --today")
     print()
     print("  # 按学科批量更新")
-    print("  python3 update-review.py --student 曲凌松 --today --subject physics --mastered good")
+    print("  python3 update-review.py --student 曲凌松 --today --subject physics")
+    print()
+    print("  # 校正第一轮 due-date（与 created+1 对齐）")
+    print("  python3 update-review.py --student 曲凌松 --fix-first-due")
 
 
 if __name__ == '__main__':

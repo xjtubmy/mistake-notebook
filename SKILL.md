@@ -1,6 +1,6 @@
 ---
 name: mistake-notebook
-description: "Use this skill for a student's 错题本 workflow in Obsidian or `data/mistake-notebook/`, especially when the user is recording wrong answers, managing spaced review, or asking what should be reviewed today. Trigger for: 录入或归档错题 from photos or text; filling or explaining `type: mistake-record` YAML/frontmatter; “今天有什么要复习的”, “今天的复习提醒”, or “复习完了”; exporting subject review PDFs; generating 举一反三 or 变式题; analyzing 薄弱知识点 or 月报; setting Feishu/WeChat daily reminders or `crontab`; and first-run checks with `check-deps`, `export-printable`, `generate-practice`, `weak-points`, `monthly-report`, `daily-review-reminder`, or `update-review`. Prefer this skill even if the user does not name it but mentions student profiles, review-round, mastered, or `mistake-record`. Do not use for one-off tutoring, generic study plans, Anki, grade spreadsheets, receipt OCR, or unrelated repo engineering."
+description: "Use this skill for a student's 错题本 workflow in Obsidian or `data/mistake-notebook/`, especially when the user is recording wrong answers, managing spaced review, or asking what should be reviewed today. Trigger for: 录入或归档错题 from photos or text; filling or explaining `type: mistake-record` YAML/frontmatter; “今天有什么要复习的”, “今天的复习提醒”, or “复习完了”; exporting subject review PDFs; generating 举一反三 or 变式题; analyzing 薄弱知识点 or 月报; setting Feishu/WeChat daily reminders or `crontab`; and first-run checks with `check-deps`, `export-printable`, `generate-practice`, `weak-points`, `monthly-report`, `daily-review-reminder`, or `update-review`. Prefer this skill even if the user does not name it but mentions student profiles, review-round, `due-date`, or `mistake-record`. Do not use for one-off tutoring, generic study plans, Anki, grade spreadsheets, receipt OCR, or unrelated repo engineering."
 ---
 
 # Mistake Notebook
@@ -97,6 +97,8 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 2. 优先批量更新
 3. 运行 `update-review.py`
 4. 返回更新数量、涉及学科、下次复习日期
+
+`review-round: 0` 时，待复习到期日按 **`created + 1 天`** 计算；若历史文件里 `due-date` 与该日期不一致，可运行 `update-review.py --fix-first-due` 写回。
 
 详细参数和自然语言映射读：
 
