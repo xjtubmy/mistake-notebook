@@ -31,6 +31,7 @@ if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
 import mistake_srs as srs  # noqa: E402
+import output_naming as out_names  # noqa: E402
 
 
 def parse_frontmatter(content: str) -> dict:
@@ -325,18 +326,17 @@ def main():
     content = generate_search_results(results, args.student, filters)
     
     if args.output:
-        Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.output).write_text(content, encoding='utf-8')
-        print(f"已保存：{args.output}")
+        out = Path(args.output)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(content, encoding='utf-8')
+        print(f"已保存：{out}")
+        out_names.print_output_path(out)
     else:
-        # 默认保存到 search 目录
-        output_dir = Path(f'data/mistake-notebook/students/{args.student}/search')
-        output_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime('%Y%m%d-%H%M')
-        filter_key = '-'.join([f"{k}-{v}" for k, v in filters.items() if v != False]) or 'all'
-        output_path = output_dir / f'search-{timestamp}-{filter_key}.md'
+        output_path = out_names.default_search_results_path(args.student)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(content, encoding='utf-8')
         print(f"已保存：{output_path}")
+        out_names.print_output_path(output_path)
 
 
 if __name__ == '__main__':

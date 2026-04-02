@@ -3,7 +3,7 @@
 月度错题总结报告生成脚本
 
 用法:
-    python3 monthly-report.py --student <学生名> --month <年月> [--output <输出路径>]
+    python3 monthly-report.py --student <学生名> --month <年月> [--subject <学科>] [--output <输出路径>]
 
 功能:
     - 统计指定月份的错题数量、学科分布
@@ -17,6 +17,12 @@ import re
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+import output_naming as out_names
 
 
 def load_mistakes_by_month(student: str, year_month: str) -> dict:
@@ -200,6 +206,7 @@ def main():
     parser = argparse.ArgumentParser(description='月度错题总结报告')
     parser.add_argument('--student', required=True, help='学生姓名')
     parser.add_argument('--month', help='年月（YYYY-MM），默认为当前月份')
+    parser.add_argument('--subject', help='仅统计该学科（与 frontmatter subject 一致，如 math / physics）')
     parser.add_argument('--output', help='输出文件路径（可选）')
     
     args = parser.parse_args()
@@ -212,6 +219,8 @@ def main():
     # 加载错题
     mistakes_by_month = load_mistakes_by_month(args.student, args.month)
     mistakes = mistakes_by_month.get(args.month, [])
+    if args.subject:
+        mistakes = [m for m in mistakes if m.get('subject') == args.subject]
     
     print(f"找到 {len(mistakes)} 道错题\n")
     
@@ -224,15 +233,16 @@ def main():
     
     # 输出
     if args.output:
-        output_path = args.output
+        output_path = Path(args.output)
     else:
-        output_dir = Path(f'data/mistake-notebook/students/{args.student}/reports')
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / f'{args.month}-monthly-report.md'
+        output_path = out_names.default_monthly_report_path(
+            args.student, args.month, args.subject
+        )
     
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    Path(output_path).write_text(report, encoding='utf-8')
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(report, encoding='utf-8')
     print(f"✅ 月度报告已保存：{output_path}")
+    out_names.print_output_path(output_path)
 
 
 if __name__ == '__main__':

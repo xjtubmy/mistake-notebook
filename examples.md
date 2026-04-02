@@ -71,14 +71,15 @@ python3 skills/mistake-notebook/scripts/check-deps.py
 
 ### 导出复习 PDF
 
-稳定路径（推荐接飞书：每次覆盖同一文件，可不写 `--output`）：
+默认文件名：**日期 + 学科**（中文日期，可不写 `--output`）：
 
 ```bash
 python3 skills/mistake-notebook/scripts/export-printable.py \
   --student 曲凌松 \
   --subject physics \
   --format pdf
-# 默认输出：data/mistake-notebook/students/曲凌松/exports/最新-物理.pdf
+# 示例：exports/2026年4月1日-物理.pdf（随运行当日变化）
+# 指定文件名中的日期：加 --date 2026-04-01
 # 终端会打印 OUTPUT_PATH=<绝对路径>
 ```
 

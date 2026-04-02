@@ -18,6 +18,12 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from collections import defaultdict
 
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+import output_naming as out_names
+
 
 def load_recent_mistakes(student: str, days: int = 7) -> list:
     """加载最近 N 天的错题"""
@@ -163,15 +169,14 @@ def main():
     
     # 输出
     if args.output:
-        output_path = args.output
+        output_path = Path(args.output)
     else:
-        output_dir = Path(f'data/mistake-notebook/students/{args.student}/reports')
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / f'parent-brief-{datetime.now().strftime("%Y%m%d")}.md'
+        output_path = out_names.default_parent_brief_path(args.student)
     
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    Path(output_path).write_text(brief, encoding='utf-8')
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(brief, encoding='utf-8')
     print(f"✅ 家长简报已保存：{output_path}")
+    out_names.print_output_path(output_path)
     
     # 打印简报内容
     print("\n" + "="*40)

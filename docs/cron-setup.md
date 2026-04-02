@@ -80,22 +80,21 @@ crontab -l
 tail -f /tmp/review-reminder.log
 ```
 
-## 导出 PDF 的稳定路径（飞书上传）
+## 导出 PDF 与飞书上传
 
-`export-printable.py` 的 `--output` 可省略：会写入
+`export-printable.py` 省略 `--output` 时，默认名为 **`{年}年{月}月{日}日-{物理|数学|…|全科}.pdf`**（见 `scripts/output_naming.py`）。**每天文件名会变**，飞书侧建议：
 
-`data/mistake-notebook/students/<学生>/exports/最新-<说明>.pdf`
+- 运行导出后从日志解析 `OUTPUT_PATH=/绝对路径/…pdf` 再上传；或  
+- 在 shell 里用当天日期拼中文文件名（需与脚本规则一致）；或  
+- 仍传 `--output` 固定到常量路径（例如始终覆盖 `exports/飞书上传.pdf`）。
 
-规则：`--subject physics` → `最新-物理.pdf`；全科 → `最新-全部.pdf`；带 `--unit` 时形如 `最新-物理-单元2.pdf`。每次导出**覆盖**同一文件，下游可写死该路径或用日志里的 `OUTPUT_PATH=...` 一行解析绝对路径。
-
-示例（物理、PDF、不写 `--output`）：
+示例（物理、PDF、默认命名）：
 
 ```bash
 cd /path/to/workspace
 python3 skills/mistake-notebook/scripts/export-printable.py \
   --student 曲凌松 --subject physics --format pdf
-# 随后用固定路径上传飞书，例如：
-# data/mistake-notebook/students/曲凌松/exports/最新-物理.pdf
+# 日志中 OUTPUT_PATH=... 即为当日文件
 ```
 
 ## Notes

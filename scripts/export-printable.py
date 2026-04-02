@@ -5,10 +5,11 @@
 用法:
     python3 export-printable.py --student <学生名> [--output <路径>] [筛选条件]
 
-未指定 --output 时，写入固定约定路径（便于飞书/cron 每次读同一文件），文件名为中文：
-    data/mistake-notebook/students/<学生>/exports/最新-全部.pdf|md
-    有 --subject 时：最新-<学科>.pdf（常见英文学科码会转为「物理」「数学」等）
-    另有 --unit 时：最新-<学科>-单元<单元>.pdf
+未指定 --output 时，写入 exports/，文件名为「日期+学科/全科」（中文日期）：
+    {年}年{月}月{日}日-全科.pdf
+    {年}年{月}月{日}日-数学.pdf（--subject math）
+    {年}年{月}月{日}日-数学-单元2.pdf（带 --unit）
+    可用 --date YYYY-MM-DD 指定文件名中的日期（默认今天）
 
 支持:
     - Markdown 格式
@@ -22,6 +23,12 @@ import base64
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+import output_naming as out_names  # noqa: E402
 
 
 def load_mistakes(student: str, subject: str = None, unit: str = None) -> list:
@@ -131,64 +138,6 @@ def load_mistakes(student: str, subject: str = None, unit: str = None) -> list:
         })
 
     return mistakes
-
-
-def _slug_segment(s: Optional[str]) -> str:
-    """文件名段：保留中英文等可见字符，去掉路径非法字符。"""
-    if not s:
-        return ''
-    t = str(s).strip()
-    t = re.sub(r'[\s/\\:*?"<>|]+', '-', t)
-    t = re.sub(r'-+', '-', t).strip('-')
-    return (t[:100] if t else '')
-
-
-# frontmatter 中学科常为英文码，默认文件名用中文更利于飞书展示
-_SUBJECT_ZH = {
-    'physics': '物理',
-    'math': '数学',
-    'mathematics': '数学',
-    'chinese': '语文',
-    'english': '英语',
-    'chemistry': '化学',
-    'biology': '生物',
-    'history': '历史',
-    'geography': '地理',
-    'politics': '政治',
-    'morality': '道法',
-    'science': '科学',
-    'it': '信息技术',
-    'pe': '体育',
-    'art': '美术',
-    'music': '音乐',
-}
-
-
-def _subject_label_for_filename(subject: str) -> str:
-    s = str(subject).strip()
-    if not s:
-        return '学科'
-    z = _SUBJECT_ZH.get(s.lower())
-    if z:
-        return z
-    return _slug_segment(s) or '学科'
-
-
-def default_output_path(student: str, subject: Optional[str], unit: Optional[str], fmt: str) -> Path:
-    """
-    稳定默认路径，供飞书等自动化重复读取（每次覆盖同一文件）。
-    文件名使用中文（最新-…），便于渠道与本地浏览识别。
-    """
-    base = Path(f'data/mistake-notebook/students/{student}/exports')
-    ext = 'pdf' if fmt == 'pdf' else 'md'
-    parts = []
-    if subject:
-        parts.append(_subject_label_for_filename(subject))
-    if unit:
-        u = _slug_segment(unit) or str(unit).strip() or '未知'
-        parts.append(f'单元{u}')
-    stem = '最新-全部' if not parts else '最新-' + '-'.join(parts)
-    return base / f'{stem}.{ext}'
 
 
 def generate_printable_md(mistakes: list, student: str, subject: str = None) -> str:
@@ -312,17 +261,33 @@ def main():
     parser.add_argument(
         '--output',
         default=None,
-        help='输出文件路径；省略则写入 exports/最新-全部 或 最新-<学科>… .pdf|md（中文文件名，稳定路径，便于飞书）',
+        help='输出文件路径；省略则按「日期+学科/全科」写入 exports/（见 output_naming）',
     )
     parser.add_argument('--subject', help='学科筛选')
     parser.add_argument('--unit', help='单元筛选')
     parser.add_argument('--format', choices=['md', 'pdf'], default='md', help='输出格式')
+    parser.add_argument(
+        '--date',
+        metavar='YYYY-MM-DD',
+        help='仅影响默认文件名中的日期（默认今天）',
+    )
     
     args = parser.parse_args()
+    ref_date = None
+    if args.date:
+        try:
+            ref_date = datetime.strptime(args.date.strip(), '%Y-%m-%d')
+        except ValueError:
+            print(f"错误：--date 须为 YYYY-MM-DD，收到 {args.date!r}")
+            sys.exit(1)
     output_path = args.output
     if not output_path:
-        output_path = str(default_output_path(args.student, args.subject, args.unit, args.format))
-        print(f"未指定 --output，使用稳定默认路径：{output_path}")
+        output_path = str(
+            out_names.default_review_export_path(
+                args.student, args.subject, args.unit, args.format, ref_date=ref_date
+            )
+        )
+        print(f"未指定 --output，使用默认路径：{output_path}")
     
     # 加载错题
     print(f"正在加载 {args.student} 的错题...")
@@ -370,12 +335,11 @@ def main():
         # 转换为 PDF
         html_to_pdf(styled_html, output_path)
     else:
-        out = Path(args.output)
+        out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(md_content, encoding='utf-8')
-        resolved = str(out.resolve())
-        print(f"已导出 Markdown: {resolved}")
-        print(f"OUTPUT_PATH={resolved}")
+        out_names.print_output_path(out)
+        print(f"已导出 Markdown: {out.resolve()}")
     
     print(f"共 {len(mistakes)} 道错题")
 

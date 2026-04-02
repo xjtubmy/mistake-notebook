@@ -14,11 +14,11 @@
 | 功能 | 推荐脚本 | 说明 |
 |------|---------|------|
 | 依赖检查 | `check-deps.py` | 首次使用或环境异常时优先执行 |
-| 导出复习内容 | `export-printable.py` | 默认 PDF；省略 `--output` 时写入 `students/<学生>/exports/最新-全部.pdf` 或 `最新-<学科>.pdf`（中文名，稳定路径，便于飞书） |
-| 生成举一反三 | `generate-practice.py` | 相似题、变式题 |
-| 薄弱点分析 | `weak-points.py` | TOP 薄弱知识点 |
-| 分析报告 | `analyze.py` | 综合分析 |
-| 月度报告 | `monthly-report.py` | 月报 |
+| 导出复习内容 | `export-printable.py` | 默认 PDF；省略 `--output` 时见下表「默认输出文件名」 |
+| 生成举一反三 | `generate-practice.py` | 默认 `practice/{日期}-{知识点}-举一反三.md` |
+| 薄弱点分析 | `weak-points.py` | 默认 `reports/{日期}-薄弱知识点TOPn.md` |
+| 分析报告 | `analyze.py` | 默认 `reports/{日期}-{学科|全科}-错题分析报告.md` |
+| 月度报告 | `monthly-report.py` | 默认 `reports/{年}年{月}月-{学科|全科}-错题分析报告.md`；可选 `--subject` |
 | 每日提醒 | `daily-review-reminder.py` | 支持 `--dry-run` 和消息渠道 |
 | 复习进度更新 | `update-review.py` | 今日/按学科批量或单题更新 |
 
@@ -32,6 +32,22 @@
 - `export-practice-pdf.py`
 
 如果未来重新启用，必须先同步更新 `SKILL.md` 与本文件，避免规则分叉。
+
+## 默认输出文件名约定
+
+逻辑见 `scripts/output_naming.py`。`{日期}` 为中文 `2026年4月1日` 这种形式（导出日或 `--date`）。
+
+| 场景 | 目录 | 默认文件名模式 |
+|------|------|----------------|
+| 复习 PDF/MD 导出 | `students/<学生>/exports/` | `{日期}-全科` / `{日期}-数学` / `{日期}-物理` …；带 `--unit` 时后缀 `-单元…` |
+| 综合分析 | `…/reports/` | `{日期}-{学科|全科}-错题分析报告.md` |
+| 月度总结 | `…/reports/` | `{年}年{月}月-{学科|全科}-错题分析报告.md`（如 `2026年3月-数学-错题分析报告.md`） |
+| 薄弱知识点 | `…/reports/` | `{日期}-薄弱知识点TOP5.md`（数字随 `--top`） |
+| 家长简报 | `…/reports/` | `{日期}-家长简报.md` |
+| 检索结果 | `…/search/` | `{日期}-{HHMM}-检索结果.md`（同日多次不互相覆盖） |
+| 举一反三 | `…/practice/` | `{日期}-{知识点}-举一反三.md` |
+
+飞书/cron 上传「今日数学复习 PDF」时，需在脚本里按**当天日期**拼出文件名（或解析终端 `OUTPUT_PATH=`），因默认名含日期、每日会换新文件。
 
 ## Minimal Record Requirements
 

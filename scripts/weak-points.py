@@ -18,6 +18,12 @@ from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
 
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+import output_naming as out_names
+
 
 def analyze_weak_points(student: str, top_n: int = 5) -> dict:
     """分析薄弱知识点"""
@@ -182,15 +188,14 @@ def main():
     
     # 输出
     if args.output:
-        output_path = args.output
+        output_path = Path(args.output)
     else:
-        output_dir = Path(f'data/mistake-notebook/students/{args.student}/reports')
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / f'weak-points-report.md'
+        output_path = out_names.default_weak_points_path(args.student, args.top)
     
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    Path(output_path).write_text(report, encoding='utf-8')
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(report, encoding='utf-8')
     print(f"✅ 薄弱知识点报告已保存：{output_path}")
+    out_names.print_output_path(output_path)
     
     # 打印摘要
     print(f"\n📊 薄弱知识点 TOP 3:")

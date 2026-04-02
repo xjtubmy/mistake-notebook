@@ -18,6 +18,12 @@ import random
 from pathlib import Path
 from datetime import datetime
 
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+import output_naming as out_names
+
 
 # 知识点→练习模板映射
 PRACTICE_TEMPLATES = {
@@ -230,13 +236,10 @@ def main():
     if args.output:
         output_path = args.output
     else:
-        # 默认保存到 practice 目录
-        output_dir = Path(f'data/mistake-notebook/students/{args.student}/practice')
-        output_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime('%Y%m%d-%H%M')
-        output_path = output_dir / f'{timestamp}-{args.knowledge}.md'
+        output_path = str(out_names.default_practice_path(args.student, args.knowledge))
     
     save_practice(practices, args.student, args.knowledge, output_path)
+    out_names.print_output_path(Path(output_path))
 
 
 if __name__ == '__main__':
