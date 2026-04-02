@@ -71,6 +71,19 @@ python3 skills/mistake-notebook/scripts/check-deps.py
 
 ### 导出复习 PDF
 
+稳定路径（推荐接飞书：每次覆盖同一文件，可不写 `--output`）：
+
+```bash
+python3 skills/mistake-notebook/scripts/export-printable.py \
+  --student 曲凌松 \
+  --subject physics \
+  --format pdf
+# 默认输出：data/mistake-notebook/students/曲凌松/exports/latest-physics.pdf
+# 终端会打印 OUTPUT_PATH=<绝对路径>
+```
+
+自定义路径：
+
 ```bash
 python3 skills/mistake-notebook/scripts/export-printable.py \
   --student 曲凌松 \

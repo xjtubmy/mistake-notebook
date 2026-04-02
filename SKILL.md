@@ -86,8 +86,9 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 
 1. 使用 `export-printable.py`
 2. 默认导出 PDF
-3. 环境支持附件时发送文件，否则返回路径
-4. 告诉用户如何使用：下载、独立重做、对照解析、复习后再告知完成
+3. 未指定 `--output` 时，脚本写入**固定约定路径** `data/mistake-notebook/students/<学生>/exports/latest-<学科或all>.pdf`（每次覆盖同名文件），便于飞书/cron 用常量路径上传；标准输出含一行 `OUTPUT_PATH=<绝对路径>` 可供下游解析
+4. 环境支持附件时发送文件，否则返回路径
+5. 告诉用户如何使用：下载、独立重做、对照解析、复习后再告知完成
 
 更多例子读 `examples.md`。
 

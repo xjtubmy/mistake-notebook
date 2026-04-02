@@ -3,7 +3,11 @@
 错题本可打印文档生成脚本（Markdown + PDF）
 
 用法:
-    python3 export-printable.py --student <学生名> --output <输出路径> [筛选条件]
+    python3 export-printable.py --student <学生名> [--output <路径>] [筛选条件]
+
+未指定 --output 时，写入固定约定路径（便于飞书/cron 每次读同一文件）：
+    data/mistake-notebook/students/<学生>/exports/latest-<slug>.pdf|md
+    slug：有 --subject 时为学科名（仅字母数字与 -）；有 --unit 时为 <subject>-u<unit>；否则为 all。
 
 支持:
     - Markdown 格式
@@ -16,6 +20,7 @@ import re
 import base64
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 
 
 def load_mistakes(student: str, subject: str = None, unit: str = None) -> list:
@@ -125,6 +130,31 @@ def load_mistakes(student: str, subject: str = None, unit: str = None) -> list:
         })
 
     return mistakes
+
+
+def _slug_segment(s: Optional[str]) -> str:
+    """文件名段：保留中英文等可见字符，去掉路径非法字符。"""
+    if not s:
+        return ''
+    t = str(s).strip()
+    t = re.sub(r'[\s/\\:*?"<>|]+', '-', t)
+    t = re.sub(r'-+', '-', t).strip('-')
+    return (t[:100] if t else '')
+
+
+def default_output_path(student: str, subject: Optional[str], unit: Optional[str], fmt: str) -> Path:
+    """
+    稳定默认路径，供飞书等自动化重复读取（每次覆盖同一文件）。
+    """
+    base = Path(f'data/mistake-notebook/students/{student}/exports')
+    ext = 'pdf' if fmt == 'pdf' else 'md'
+    parts = []
+    if subject:
+        parts.append(_slug_segment(subject) or 'subject')
+    if unit:
+        parts.append('u' + (_slug_segment(unit) or 'unit'))
+    slug = '-'.join(parts) if parts else 'all'
+    return base / f'latest-{slug}.{ext}'
 
 
 def generate_printable_md(mistakes: list, student: str, subject: str = None) -> str:
@@ -237,18 +267,28 @@ def html_to_pdf(html_content: str, output_path: str):
         
         browser.close()
     
-    print(f"✅ 已导出 PDF: {output_path}")
+    resolved = str(Path(output_path).resolve())
+    print(f"✅ 已导出 PDF: {resolved}")
+    print(f"OUTPUT_PATH={resolved}")
 
 
 def main():
     parser = argparse.ArgumentParser(description='错题本可打印文档生成')
     parser.add_argument('--student', required=True, help='学生姓名')
-    parser.add_argument('--output', required=True, help='输出文件路径')
+    parser.add_argument(
+        '--output',
+        default=None,
+        help='输出文件路径；省略则写入 data/mistake-notebook/students/<学生>/exports/latest-<slug>.pdf|md（稳定路径，便于飞书）',
+    )
     parser.add_argument('--subject', help='学科筛选')
     parser.add_argument('--unit', help='单元筛选')
     parser.add_argument('--format', choices=['md', 'pdf'], default='md', help='输出格式')
     
     args = parser.parse_args()
+    output_path = args.output
+    if not output_path:
+        output_path = str(default_output_path(args.student, args.subject, args.unit, args.format))
+        print(f"未指定 --output，使用稳定默认路径：{output_path}")
     
     # 加载错题
     print(f"正在加载 {args.student} 的错题...")
@@ -294,11 +334,14 @@ def main():
         """
         
         # 转换为 PDF
-        html_to_pdf(styled_html, args.output)
+        html_to_pdf(styled_html, output_path)
     else:
-        Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.output).write_text(md_content, encoding='utf-8')
-        print(f"已导出 Markdown: {args.output}")
+        out = Path(args.output)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(md_content, encoding='utf-8')
+        resolved = str(out.resolve())
+        print(f"已导出 Markdown: {resolved}")
+        print(f"OUTPUT_PATH={resolved}")
     
     print(f"共 {len(mistakes)} 道错题")
 

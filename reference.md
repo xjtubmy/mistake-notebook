@@ -14,7 +14,7 @@
 | 功能 | 推荐脚本 | 说明 |
 |------|---------|------|
 | 依赖检查 | `check-deps.py` | 首次使用或环境异常时优先执行 |
-| 导出复习内容 | `export-printable.py` | 当前默认导出 PDF |
+| 导出复习内容 | `export-printable.py` | 默认 PDF；省略 `--output` 时写入 `students/<学生>/exports/latest-<slug>.pdf`（稳定路径，便于飞书） |
 | 生成举一反三 | `generate-practice.py` | 相似题、变式题 |
 | 薄弱点分析 | `weak-points.py` | TOP 薄弱知识点 |
 | 分析报告 | `analyze.py` | 综合分析 |

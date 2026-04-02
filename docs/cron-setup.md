@@ -80,6 +80,24 @@ crontab -l
 tail -f /tmp/review-reminder.log
 ```
 
+## 导出 PDF 的稳定路径（飞书上传）
+
+`export-printable.py` 的 `--output` 可省略：会写入
+
+`data/mistake-notebook/students/<学生>/exports/latest-<slug>.pdf`
+
+规则：`--subject physics` → `latest-physics.pdf`；仅 `--unit` 或与学科组合见脚本 `--help`；全科 → `latest-all.pdf`。每次导出**覆盖**同一文件，下游可写死该路径或用日志里的 `OUTPUT_PATH=...` 一行解析绝对路径。
+
+示例（物理、PDF、不写 `--output`）：
+
+```bash
+cd /path/to/workspace
+python3 skills/mistake-notebook/scripts/export-printable.py \
+  --student 曲凌松 --subject physics --format pdf
+# 随后用固定路径上传飞书，例如：
+# data/mistake-notebook/students/曲凌松/exports/latest-physics.pdf
+```
+
 ## Notes
 
 - 当前推荐流程是“提醒 -> 用户查看文字列表 -> 用户按需请求 PDF -> 用户说复习完了”
