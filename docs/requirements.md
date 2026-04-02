@@ -70,5 +70,6 @@ python3 -c "from playwright.sync_api import sync_playwright; print('OK')"
 ## Notes
 
 - 当前默认导出格式是 PDF
+- **`export-printable.py`** 与 **`generate-practice.py`** 的 PDF 均经 **`scripts/pdf_export.py`**（Playwright + markdown2）
 - 长图相关脚本仍可保留，但不是默认工作流
 - 不再依赖 `wkhtmltopdf`

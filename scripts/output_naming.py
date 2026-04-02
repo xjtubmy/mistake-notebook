@@ -141,6 +141,6 @@ def default_practice_path(student: str, knowledge: str) -> Path:
     return base / f"{chinese_ymd()}-{kp}-举一反三.md"
 
 
-def print_output_path(path: Path) -> None:
+def print_output_path(path: Path, key: str = "OUTPUT_PATH") -> None:
     resolved = str(path.resolve())
-    print(f"OUTPUT_PATH={resolved}")
+    print(f"{key}={resolved}")

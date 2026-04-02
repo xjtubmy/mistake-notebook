@@ -15,7 +15,7 @@
 |------|---------|------|
 | 依赖检查 | `check-deps.py` | 首次使用或环境异常时优先执行 |
 | 导出复习内容 | `export-printable.py` | 默认 PDF；省略 `--output` 时见下表「默认输出文件名」 |
-| 生成举一反三 | `generate-practice.py` | 默认 `practice/{日期}-{知识点}-举一反三.md` |
+| 生成举一反三 | `generate-practice.py` | 默认 `practice/{日期}-{知识点}-举一反三.md` + 同名 `.pdf`（`--md-only` 跳过 PDF） |
 | 薄弱点分析 | `weak-points.py` | 默认 `reports/{日期}-薄弱知识点TOPn.md` |
 | 分析报告 | `analyze.py` | 默认 `reports/{日期}-{学科|全科}-错题分析报告.md` |
 | 月度报告 | `monthly-report.py` | 默认 `reports/{年}年{月}月-{学科|全科}-错题分析报告.md`；可选 `--subject` |
@@ -35,7 +35,7 @@
 ### 已移除的脚本
 
 - **`export-pdf.py`**（pdfkit / wkhtmltopdf）：错题复习 PDF 请只用 **`export-printable.py`**。
-- **`export-practice-pdf.py`**：举一反三请用 **`generate-practice.py`** 生成 Markdown；需要 PDF 时用编辑器/系统打印或自行转换。
+- **`export-practice-pdf.py`**：已由 **`generate-practice.py`** 默认同时生成 Markdown 与 PDF 取代。
 
 ## 默认输出文件名约定
 
@@ -49,7 +49,7 @@
 | 薄弱知识点 | `…/reports/` | `{日期}-薄弱知识点TOP5.md`（数字随 `--top`） |
 | 家长简报 | `…/reports/` | `{日期}-家长简报.md` |
 | 检索结果 | `…/search/` | `{日期}-{HHMM}-检索结果.md`（同日多次不互相覆盖） |
-| 举一反三 | `…/practice/` | `{日期}-{知识点}-举一反三.md`（无单独练习 PDF 脚本，需 PDF 请打印 md 或自行转换） |
+| 举一反三 | `…/practice/` | `{日期}-{知识点}-举一反三.md` 与 **同名 `.pdf`**（与 `export-printable` 共用 Playwright 导出逻辑） |
 
 飞书/cron 上传「今日数学复习 PDF」时，需在脚本里按**当天日期**拼出文件名（或解析终端 `OUTPUT_PATH=`），因默认名含日期、每日会换新文件。
 

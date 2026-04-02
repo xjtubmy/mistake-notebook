@@ -29,6 +29,7 @@ if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
 import output_naming as out_names  # noqa: E402
+import pdf_export  # noqa: E402
 
 
 def load_mistakes(student: str, subject: str = None, unit: str = None) -> list:
@@ -227,34 +228,6 @@ def generate_printable_md(mistakes: list, student: str, subject: str = None) -> 
     return content
 
 
-def html_to_pdf(html_content: str, output_path: str):
-    """HTML 转 PDF（使用 Playwright）"""
-    from playwright.sync_api import sync_playwright
-    
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
-        
-        # 加载 HTML
-        page.set_content(html_content, wait_until='networkidle')
-        
-        # 生成 PDF（A4 尺寸）
-        page.pdf(
-            path=output_path,
-            format='A4',
-            print_background=True,
-            margin={'top': '2cm', 'bottom': '2cm', 'left': '2cm', 'right': '2cm'}
-        )
-        
-        browser.close()
-    
-    resolved = str(Path(output_path).resolve())
-    print(f"✅ 已导出 PDF: {resolved}")
-    print(f"OUTPUT_PATH={resolved}")
-
-
 def main():
     parser = argparse.ArgumentParser(description='错题本可打印文档生成')
     parser.add_argument('--student', required=True, help='学生姓名')
@@ -302,38 +275,8 @@ def main():
     md_content = generate_printable_md(mistakes, args.student, args.subject)
     
     if args.format == 'pdf':
-        # 生成 HTML（带打印样式）
-        import markdown2
-        html_content = markdown2.markdown(md_content, extras=['tables', 'fenced-code-blocks', 'emoji'])
-        
-        # 添加打印样式
-        styled_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <style>
-                @page {{ size: A4; margin: 2cm; }}
-                body {{ font-family: "SimSun", "Songti SC", serif; line-height: 1.8; font-size: 12pt; }}
-                h1 {{ text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; font-size: 18pt; }}
-                h2 {{ color: #333; border-left: 4px solid #4CAF50; padding-left: 10px; font-size: 14pt; page-break-after: avoid; }}
-                h3 {{ color: #555; font-size: 12pt; }}
-                img {{ max-width: 100%; height: auto; display: block; margin: 10px auto; }}
-                table {{ border-collapse: collapse; width: 100%; margin: 10px 0; }}
-                th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-                th {{ background-color: #f5f5f5; }}
-                pre {{ background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 10pt; }}
-                blockquote {{ border-left: 4px solid #4CAF50; padding-left: 15px; margin: 10px 0; color: #555; }}
-            </style>
-        </head>
-        <body>
-        {html_content}
-        </body>
-        </html>
-        """
-        
-        # 转换为 PDF
-        html_to_pdf(styled_html, output_path)
+        styled_html = pdf_export.printable_html_from_markdown(md_content)
+        pdf_export.html_to_pdf(styled_html, output_path)
     else:
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)

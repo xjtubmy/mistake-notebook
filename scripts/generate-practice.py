@@ -3,13 +3,13 @@
 举一反三练习生成脚本
 
 用法:
-    python3 generate-practice.py --student <学生名> --knowledge <知识点> [--count <数量>] [--style <风格>]
+    python3 generate-practice.py --student <学生名> --knowledge <知识点> [--count <数量>] [--style <风格>] [--md-only]
 
 功能:
     - 基于错题知识点动态生成相似题
     - 每次生成不同的题目（避免固化）
     - 支持多种风格（基础/变式/提升）
-    - 生成独立的练习文件（不污染错题记录）
+    - 默认同时生成 Markdown 与同名的 PDF（Playwright）；可用 --md-only 跳过 PDF
 """
 
 import argparse
@@ -23,6 +23,7 @@ if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
 import output_naming as out_names
+import pdf_export
 
 
 # 知识点→练习模板映射
@@ -154,10 +155,8 @@ def generate_generic_practice(style: str, count: int) -> list:
     ] * count
 
 
-def save_practice(practices: list, student: str, knowledge_point: str, output_path: str):
-    """保存练习题"""
-    timestamp = datetime.now().strftime('%Y%m%d-%H%M')
-    
+def build_practice_markdown(practices: list, student: str, knowledge_point: str) -> str:
+    """组装练习 Markdown 正文。"""
     content = f"""# 📝 举一反三练习
 
 **学生**：{student}  
@@ -170,7 +169,7 @@ def save_practice(practices: list, student: str, knowledge_point: str, output_pa
 ## 练习题
 
 """
-    
+
     for i, p in enumerate(practices, 1):
         content += f"""### 第 {i} 题
 
@@ -179,7 +178,7 @@ def save_practice(practices: list, student: str, knowledge_point: str, output_pa
 """
         if 'options' in p:
             content += f"{p['options']}\n\n"
-        
+
         content += f"""<details>
 <summary>点击查看答案与解析</summary>
 
@@ -192,7 +191,7 @@ def save_practice(practices: list, student: str, knowledge_point: str, output_pa
 ---
 
 """
-    
+
     content += f"""
 ## 📊 练习记录
 
@@ -212,10 +211,13 @@ def save_practice(practices: list, student: str, knowledge_point: str, output_pa
 
 *本练习由 mistake-notebook 动态生成 · 每次生成题目可能不同*
 """
-    
+    return content
+
+
+def save_practice_md(content: str, output_path: str) -> None:
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     Path(output_path).write_text(content, encoding='utf-8')
-    print(f"已生成练习：{output_path}")
+    print(f"已生成练习 Markdown：{output_path}")
 
 
 def main():
@@ -224,7 +226,12 @@ def main():
     parser.add_argument('--knowledge', required=True, help='知识点')
     parser.add_argument('--count', type=int, default=3, help='题目数量（默认 3）')
     parser.add_argument('--style', choices=['基础', '变式', '提升', '混合'], default='混合', help='题目风格')
-    parser.add_argument('--output', help='输出文件路径（可选）')
+    parser.add_argument('--output', help='Markdown 输出路径（可选）；PDF 为同路径 .pdf')
+    parser.add_argument(
+        '--md-only',
+        action='store_true',
+        help='只生成 Markdown，不导出 PDF',
+    )
     
     args = parser.parse_args()
     
@@ -234,12 +241,25 @@ def main():
     practices = generate_practice(args.knowledge, args.style, args.count)
     
     if args.output:
-        output_path = args.output
+        md_path = args.output
     else:
-        output_path = str(out_names.default_practice_path(args.student, args.knowledge))
-    
-    save_practice(practices, args.student, args.knowledge, output_path)
-    out_names.print_output_path(Path(output_path))
+        md_path = str(out_names.default_practice_path(args.student, args.knowledge))
+
+    content = build_practice_markdown(practices, args.student, args.knowledge)
+    save_practice_md(content, md_path)
+    md_p = Path(md_path)
+
+    if args.md_only:
+        out_names.print_output_path(md_p)
+    else:
+        out_names.print_output_path(md_p, "OUTPUT_PATH_MD")
+        pdf_path = str(md_p.with_suffix(".pdf"))
+        try:
+            html = pdf_export.printable_html_from_markdown(content)
+            pdf_export.html_to_pdf(html, pdf_path)
+        except Exception as e:
+            print(f"⚠️ PDF 未生成（已保留 Markdown）: {e}")
+            out_names.print_output_path(md_p)
 
 
 if __name__ == '__main__':

@@ -112,7 +112,7 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 
 当用户要生成变式题、薄弱点分析、分析报告、月报时，优先使用：
 
-- `generate-practice.py`（输出 Markdown；已删除 `export-practice-pdf.py`，练习 PDF 需自行打印或转换）
+- `generate-practice.py`（默认 Markdown + 同名 PDF，Playwright；`--md-only` 可只出 md）
 - `weak-points.py`
 - `analyze.py`
 - `monthly-report.py`
