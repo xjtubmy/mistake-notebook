@@ -5,9 +5,10 @@
 用法:
     python3 export-printable.py --student <学生名> [--output <路径>] [筛选条件]
 
-未指定 --output 时，写入固定约定路径（便于飞书/cron 每次读同一文件）：
-    data/mistake-notebook/students/<学生>/exports/latest-<slug>.pdf|md
-    slug：有 --subject 时为学科名（仅字母数字与 -）；有 --unit 时为 <subject>-u<unit>；否则为 all。
+未指定 --output 时，写入固定约定路径（便于飞书/cron 每次读同一文件），文件名为中文：
+    data/mistake-notebook/students/<学生>/exports/最新-全部.pdf|md
+    有 --subject 时：最新-<学科>.pdf（常见英文学科码会转为「物理」「数学」等）
+    另有 --unit 时：最新-<学科>-单元<单元>.pdf
 
 支持:
     - Markdown 格式
@@ -142,19 +143,52 @@ def _slug_segment(s: Optional[str]) -> str:
     return (t[:100] if t else '')
 
 
+# frontmatter 中学科常为英文码，默认文件名用中文更利于飞书展示
+_SUBJECT_ZH = {
+    'physics': '物理',
+    'math': '数学',
+    'mathematics': '数学',
+    'chinese': '语文',
+    'english': '英语',
+    'chemistry': '化学',
+    'biology': '生物',
+    'history': '历史',
+    'geography': '地理',
+    'politics': '政治',
+    'morality': '道法',
+    'science': '科学',
+    'it': '信息技术',
+    'pe': '体育',
+    'art': '美术',
+    'music': '音乐',
+}
+
+
+def _subject_label_for_filename(subject: str) -> str:
+    s = str(subject).strip()
+    if not s:
+        return '学科'
+    z = _SUBJECT_ZH.get(s.lower())
+    if z:
+        return z
+    return _slug_segment(s) or '学科'
+
+
 def default_output_path(student: str, subject: Optional[str], unit: Optional[str], fmt: str) -> Path:
     """
     稳定默认路径，供飞书等自动化重复读取（每次覆盖同一文件）。
+    文件名使用中文（最新-…），便于渠道与本地浏览识别。
     """
     base = Path(f'data/mistake-notebook/students/{student}/exports')
     ext = 'pdf' if fmt == 'pdf' else 'md'
     parts = []
     if subject:
-        parts.append(_slug_segment(subject) or 'subject')
+        parts.append(_subject_label_for_filename(subject))
     if unit:
-        parts.append('u' + (_slug_segment(unit) or 'unit'))
-    slug = '-'.join(parts) if parts else 'all'
-    return base / f'latest-{slug}.{ext}'
+        u = _slug_segment(unit) or str(unit).strip() or '未知'
+        parts.append(f'单元{u}')
+    stem = '最新-全部' if not parts else '最新-' + '-'.join(parts)
+    return base / f'{stem}.{ext}'
 
 
 def generate_printable_md(mistakes: list, student: str, subject: str = None) -> str:
@@ -278,7 +312,7 @@ def main():
     parser.add_argument(
         '--output',
         default=None,
-        help='输出文件路径；省略则写入 data/mistake-notebook/students/<学生>/exports/latest-<slug>.pdf|md（稳定路径，便于飞书）',
+        help='输出文件路径；省略则写入 exports/最新-全部 或 最新-<学科>… .pdf|md（中文文件名，稳定路径，便于飞书）',
     )
     parser.add_argument('--subject', help='学科筛选')
     parser.add_argument('--unit', help='单元筛选')

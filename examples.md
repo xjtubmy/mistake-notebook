@@ -78,7 +78,7 @@ python3 skills/mistake-notebook/scripts/export-printable.py \
   --student 曲凌松 \
   --subject physics \
   --format pdf
-# 默认输出：data/mistake-notebook/students/曲凌松/exports/latest-physics.pdf
+# 默认输出：data/mistake-notebook/students/曲凌松/exports/最新-物理.pdf
 # 终端会打印 OUTPUT_PATH=<绝对路径>
 ```
 

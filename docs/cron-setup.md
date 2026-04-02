@@ -84,9 +84,9 @@ tail -f /tmp/review-reminder.log
 
 `export-printable.py` 的 `--output` 可省略：会写入
 
-`data/mistake-notebook/students/<学生>/exports/latest-<slug>.pdf`
+`data/mistake-notebook/students/<学生>/exports/最新-<说明>.pdf`
 
-规则：`--subject physics` → `latest-physics.pdf`；仅 `--unit` 或与学科组合见脚本 `--help`；全科 → `latest-all.pdf`。每次导出**覆盖**同一文件，下游可写死该路径或用日志里的 `OUTPUT_PATH=...` 一行解析绝对路径。
+规则：`--subject physics` → `最新-物理.pdf`；全科 → `最新-全部.pdf`；带 `--unit` 时形如 `最新-物理-单元2.pdf`。每次导出**覆盖**同一文件，下游可写死该路径或用日志里的 `OUTPUT_PATH=...` 一行解析绝对路径。
 
 示例（物理、PDF、不写 `--output`）：
 
@@ -95,7 +95,7 @@ cd /path/to/workspace
 python3 skills/mistake-notebook/scripts/export-printable.py \
   --student 曲凌松 --subject physics --format pdf
 # 随后用固定路径上传飞书，例如：
-# data/mistake-notebook/students/曲凌松/exports/latest-physics.pdf
+# data/mistake-notebook/students/曲凌松/exports/最新-物理.pdf
 ```
 
 ## Notes
