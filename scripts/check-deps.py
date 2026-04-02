@@ -73,12 +73,6 @@ def main():
         print(f"❌ markdown2: 未安装")
         deps_status['markdown2'] = False
     
-    # pdfkit（已废弃，仅提示）
-    if check_python_package('pdfkit'):
-        print(f"⚪ pdfkit: 已安装 (已废弃，不再需要)")
-    else:
-        print(f"⚪ pdfkit: 不需要 (已改用 playwright)")
-    
     print()
     
     # 浏览器

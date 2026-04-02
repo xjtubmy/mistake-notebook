@@ -84,7 +84,7 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 
 当用户明确要求发送某科或全部复习内容时：
 
-1. 使用 `export-printable.py`
+1. 使用 **`export-printable.py`**（已删除 `export-pdf.py`，不再使用 pdfkit/wkhtmltopdf）
 2. 默认导出 PDF
 3. 未指定 `--output` 时，复习导出写入 `exports/`，文件名为**中文日期 + 学科**（如 `2026年4月1日-数学.pdf`、`…-全科.pdf`）；飞书侧需按当日日期拼接路径或解析 `OUTPUT_PATH=`。其他报告类脚本的默认名见 `reference.md` 与 `scripts/output_naming.py`
 4. 环境支持附件时发送文件，否则返回路径
@@ -112,7 +112,7 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 
 当用户要生成变式题、薄弱点分析、分析报告、月报时，优先使用：
 
-- `generate-practice.py`
+- `generate-practice.py`（输出 Markdown；已删除 `export-practice-pdf.py`，练习 PDF 需自行打印或转换）
 - `weak-points.py`
 - `analyze.py`
 - `monthly-report.py`

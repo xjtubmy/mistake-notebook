@@ -29,9 +29,13 @@
 - `share.py`
 - `generate-image.py`
 - `review-reminder.py`
-- `export-practice-pdf.py`
 
 如果未来重新启用，必须先同步更新 `SKILL.md` 与本文件，避免规则分叉。
+
+### 已移除的脚本
+
+- **`export-pdf.py`**（pdfkit / wkhtmltopdf）：错题复习 PDF 请只用 **`export-printable.py`**。
+- **`export-practice-pdf.py`**：举一反三请用 **`generate-practice.py`** 生成 Markdown；需要 PDF 时用编辑器/系统打印或自行转换。
 
 ## 默认输出文件名约定
 
@@ -45,7 +49,7 @@
 | 薄弱知识点 | `…/reports/` | `{日期}-薄弱知识点TOP5.md`（数字随 `--top`） |
 | 家长简报 | `…/reports/` | `{日期}-家长简报.md` |
 | 检索结果 | `…/search/` | `{日期}-{HHMM}-检索结果.md`（同日多次不互相覆盖） |
-| 举一反三 | `…/practice/` | `{日期}-{知识点}-举一反三.md` |
+| 举一反三 | `…/practice/` | `{日期}-{知识点}-举一反三.md`（无单独练习 PDF 脚本，需 PDF 请打印 md 或自行转换） |
 
 飞书/cron 上传「今日数学复习 PDF」时，需在脚本里按**当天日期**拼出文件名（或解析终端 `OUTPUT_PATH=`），因默认名含日期、每日会换新文件。
 
