@@ -146,6 +146,65 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 - `resources/similar-problems-template.md`：举一反三模板
 - `resources/curriculum/`：教材版本和单元映射参考
 
+---
+
+## 🆕 卡帕西 Wiki 模式（MVP）
+
+> 2026-04-08 起新增：基于 Andrej Karpathy LLM Wiki 模式的知识库结构
+
+### 目录结构
+
+```
+students/{学生}/
+├── wiki/                    # 知识库（新增）
+│   ├── concepts/           # 知识点页面（独立成页，带掌握度）
+│   ├── reviews/            # 复习记录（按月存储，完整轨迹）
+│   ├── questions/          # 题目索引（可选）
+│   └── index.md            # 总索引（Dataview 查询入口）
+├── mistakes/               # 原始错题（保留，向后兼容）
+├── practice/               # 变式练习
+├── reports/                # 分析报告
+└── ...
+```
+
+### 向后兼容说明
+
+| 功能 | 原实现 | 新实现 | 兼容性 |
+|------|--------|--------|--------|
+| 复习查询 | `review-state.json` + `mistakes/` | 同上 + `wiki/reviews/` | ✅ 完全兼容 |
+| 月报生成 | 扫描 `mistakes/` | 扫描 `mistakes/` + `wiki/` | ✅ 完全兼容 |
+| 更新复习 | `update-review.py` | 同上 + 写入 `wiki/reviews/` | ✅ 完全兼容 |
+| 薄弱点分析 | 统计 `error-type` | 统计 `wiki/concepts/confidence` | ✅ 增强版 |
+
+### 新增能力
+
+1. **知识点图谱**：每个知识点独立成页，关联所有相关题目
+2. **掌握度追踪**：`confidence` 字段（low/medium/high）
+3. **复习轨迹**：完整历史记录（日期、结果、用时）
+4. **Dataview 查询**：在 Obsidian 中任意查询
+5. **自动 Lint**：定期扫描矛盾、孤儿页、缺失关联
+
+### 迁移步骤（MVP）
+
+1. ✅ 创建 `wiki/` 目录结构
+2. ✅ 创建 `index.md` 总索引
+3. ✅ 创建示例知识点页面
+4. ⏳ 逐步将现有题目关联到知识点
+5. ⏳ 配置 Obsidian Dataview 插件
+
+### 维护命令
+
+```bash
+# 创建知识点页面（LLM 自动生成）
+python3 scripts/create-concept.py --knowledge "程序运算与不等式组"
+
+# 定期 Lint（扫描矛盾、孤儿页）
+python3 scripts/lint-wiki.py --student 曲凌松
+
+# 生成变式题并回填到 wiki
+python3 scripts/generate-practice.py --student 曲凌松 --wiki-mode
+```
+
 ## Self-Check
 
 - 是否判断清楚这是错题本工作流，而不是普通讲题
