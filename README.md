@@ -17,6 +17,52 @@
 | 复习进度 | 说「复习完了」「物理复习完了」等，自动批量更新**今日已到期**的题目 |
 | 巩固与诊断 | 举一反三 / 变式题、薄弱知识点、综合分析、月度报告 |
 | 提醒 | 飞书、微信或 `crontab` 等渠道的每日复习提醒（可 dry-run 预览文案） |
+| 🆕 **知识库模式** | 基于卡帕西 LLM Wiki 理念，把错题本升级成结构化知识库（知识点图谱、双向链接、自动 Lint） |
+
+## 🆕 卡帕西 LLM Wiki 模式（2026-04-08 新增）
+
+基于 Andrej Karpathy 的 [LLM Wiki](https://www.analyticsvidhya.com/blog/2026/04/llm-wiki-by-andrej-karpathy/) 理念，把错题本升级成**结构化知识库**：
+
+| 传统 RAG | LLM Wiki |
+|---------|---------|
+| 查询时临时检索 | 录入时编译入库 |
+| 知识不积累 | 持续累积，预建关联 |
+| 临时对话 | 持久 Markdown 文件 |
+| 无矛盾检测 | 录入时标记冲突 |
+
+**新增能力**：
+- 📚 **知识点图谱**：每个知识点独立成页（`wiki/concepts/`），带掌握度追踪（`confidence`）
+- 🔗 **双向链接**：题目↔知识点，Obsidian 图谱可视化
+- 🤖 **自动 Lint**：定期扫描矛盾、孤儿页、缺失关联（`lint-wiki.py`）
+- 📊 **Dataview 查询**：在 Obsidian 中任意查询统计
+
+**目录结构**：
+```
+曲凌松/
+├── wiki/                    # 知识库（新增）
+│   ├── concepts/           # 知识点页面
+│   ├── reviews/            # 复习记录
+│   └── index.md            # 总索引（Dataview 入口）
+├── mistakes/               # 原始错题（保留）
+├── practice/               # 变式练习
+└── reports/                # 分析报告
+```
+
+**使用方式**：
+```bash
+# 创建知识点页面
+python3 scripts/create-concept.py --student "曲凌松" --knowledge "程序运算与不等式组"
+
+# 知识库健康检查
+python3 scripts/lint-wiki.py --student "曲凌松"
+
+# 验证链接有效性
+python3 scripts/verify-links.py --student "曲凌松"
+```
+
+**向后兼容**：现有命令（`今天有什么要复习的 `、` 复习完了`、` 生成月报`）全部保留，只是数据源扩展到 `wiki/` 目录。
+
+---
 
 ## 怎么用（自然语言）
 
@@ -45,6 +91,14 @@
 python3 path/to/mistake-notebook/scripts/check-deps.py
 ```
 
+### 🆕 Wiki 模式脚本
+
+| 脚本 | 功能 |
+|------|------|
+| `create-concept.py` | 基于现有错题自动创建知识点页面 |
+| `lint-wiki.py` | 知识库健康检查（孤儿页、缺失关联、过期内容） |
+| `verify-links.py` | 验证错题到知识点的链接有效性 |
+
 ## 文档索引
 
 | 文件 | 内容 |
@@ -63,9 +117,13 @@ mistake-notebook/
 ├── SKILL.md          # 智能体入口
 ├── reference.md
 ├── examples.md
-├── docs/
+├── docs/             # 详细文档（auto-review-update, cron-setup, etc.）
 ├── resources/        # 模板、错因类型、课标映射等
-└── scripts/          # 导出、更新复习、提醒、分析等
+├── scripts/          # 导出、更新复习、提醒、分析、Wiki 工具
+│   ├── create-concept.py    # 🆕 创建知识点页面
+│   ├── lint-wiki.py         # 🆕 知识库健康检查
+│   └── verify-links.py      # 🆕 验证链接有效性
+└── trigger-optimization/  # 触发词优化配置
 ```
 
 ## License
