@@ -7,12 +7,16 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import random
 import sys
+import urllib.request
+import urllib.error
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # 添加 scripts 目录到路径以导入 core 模块
 _script_dir = Path(__file__).resolve().parent.parent
@@ -20,6 +24,11 @@ if str(_script_dir) not in sys.path:
     sys.path.insert(0, str(_script_dir))
 
 from core.file_ops import get_student_dir
+
+# LLM 配置（可通过环境变量覆盖）
+LLM_API_URL = 'http://localhost:11434/api/generate'
+LLM_MODEL = 'qwen2.5:7b'
+LLM_TIMEOUT = 30  # 秒
 
 
 @dataclass
@@ -32,12 +41,16 @@ class PracticeItem:
         parse: 解析说明
         options: 选项内容（可选，用于选择题）
         style: 题目风格（基础/变式/提升）
+        difficulty: 难度等级（1-5，1 最简单，5 最难）
+        hash: 题目哈希值（用于去重）
     """
     question: str
     answer: str
     parse: str
     options: Optional[str] = None
     style: str = 'mixed'
+    difficulty: int = 3
+    hash: str = ''
 
 
 @dataclass
@@ -803,12 +816,13 @@ class PracticeService:
             'density_mass': density_mass, 'density_vol': density_vol, 'density_calc': density_calc,
         }
     
-    def _fill_template(self, template: Dict[str, str], params: Dict[str, Any]) -> PracticeItem:
+    def _fill_template(self, template: Dict[str, str], params: Dict[str, Any], style: str = 'mixed') -> PracticeItem:
         """填充题目模板。
         
         Args:
             template: 题目模板字典
             params: 参数字典
+            style: 题目风格（用于确定难度）
         
         Returns:
             PracticeItem 实例
@@ -827,19 +841,34 @@ class PracticeService:
             except KeyError:
                 return text
         
+        question = fmt(template.get('question', ''))
+        answer = fmt(template.get('answer', ''))
+        parse = fmt(template.get('parse', ''))
+        options = fmt(template.get('options', '')) if 'options' in template else None
+        
+        # 根据风格确定难度：基础=1-2，变式=3，提升=4-5
+        difficulty_map = {'基础': random.randint(1, 2), '变式': 3, '提升': random.randint(4, 5), 'mixed': 3}
+        difficulty = template.get('difficulty', difficulty_map.get(style, 3))
+        
+        # 计算题目 hash（基于题目内容）
+        item_hash = hashlib.md5(f"{question}|{answer}|{parse}".encode('utf-8')).hexdigest()[:12]
+        
         return PracticeItem(
-            question=fmt(template.get('question', '')),
-            answer=fmt(template.get('answer', '')),
-            parse=fmt(template.get('parse', '')),
-            options=fmt(template.get('options', '')) if 'options' in template else None,
-            style=template.get('style', 'mixed'),
+            question=question,
+            answer=answer,
+            parse=parse,
+            options=options,
+            style=template.get('style', style),
+            difficulty=difficulty,
+            hash=item_hash,
         )
     
     def generate_practice(
         self,
         knowledge_point: str,
         style: str = 'mixed',
-        count: int = 3
+        count: int = 3,
+        difficulty: Optional[Tuple[int, int]] = None
     ) -> PracticeSet:
         """生成练习题集。
         
@@ -850,6 +879,7 @@ class PracticeService:
             knowledge_point: 知识点名称（支持别名，如"欧姆"→"欧姆定律"）
             style: 练习风格，可选 '基础'、'变式'、'提升'、'mixed'（默认）
             count: 题目数量（默认 3）
+            difficulty: 难度范围元组 (min, max)，例如 (1, 3) 表示简单题，(4, 5) 表示难题
         
         Returns:
             PracticeSet 实例，包含生成的练习题
@@ -866,45 +896,65 @@ class PracticeService:
         actual_kp = self._resolve_knowledge_point(knowledge_point)
         templates = PRACTICE_TEMPLATES.get(actual_kp)
         
-        if not templates:
-            # 返回空练习集（无可用模板）
-            return PracticeSet(
-                student=self.student_name,
-                knowledge_point=knowledge_point,
-                style=style,
-                generated_at=datetime.now(),
-                items=[]
-            )
+        # 有模板时使用模板生成
+        if templates:
+            # 收集所有可用题目（带风格标记）
+            all_templates: List[Tuple[Dict[str, str], str]] = []  # (template, style)
+            if style == 'mixed':
+                for s in ['基础', '变式', '提升']:
+                    for t in templates.get(s, []):
+                        all_templates.append((t, s))
+            else:
+                for t in templates.get(style, []):
+                    all_templates.append((t, style))
+            
+            if all_templates:
+                # 根据难度筛选模板
+                if difficulty is not None:
+                    min_diff, max_diff = difficulty
+                    filtered_templates = []
+                    for t, t_style in all_templates:
+                        est_diff = {'基础': 2, '变式': 3, '提升': 5}.get(t_style, 3)
+                        if min_diff <= est_diff <= max_diff:
+                            filtered_templates.append((t, t_style))
+                    if filtered_templates:
+                        all_templates = filtered_templates
+                
+                # 随机选择题目（带去重）
+                params = self._generate_params()
+                seen_hashes: set = set()
+                items: List[PracticeItem] = []
+                
+                # 尝试多次以确保获得足够的唯一题目
+                max_attempts = count * 3
+                attempts = 0
+                
+                while len(items) < count and attempts < max_attempts and all_templates:
+                    attempts += 1
+                    # 随机选择一个模板（元组：template, t_style）
+                    template, t_style = random.choice(all_templates)
+                    item = self._fill_template(template, params, t_style)
+                    
+                    # 去重：如果 hash 已存在，跳过
+                    if item.hash not in seen_hashes:
+                        seen_hashes.add(item.hash)
+                        items.append(item)
+                
+                return PracticeSet(
+                    student=self.student_name,
+                    knowledge_point=knowledge_point,
+                    style=style,
+                    generated_at=datetime.now(),
+                    items=items
+                )
         
-        # 收集所有可用题目
-        all_templates: List[Dict[str, str]] = []
-        if style == 'mixed':
-            for s in ['基础', '变式', '提升']:
-                all_templates.extend(templates.get(s, []))
-        else:
-            all_templates.extend(templates.get(style, []))
-        
-        if not all_templates:
-            return PracticeSet(
-                student=self.student_name,
-                knowledge_point=knowledge_point,
-                style=style,
-                generated_at=datetime.now(),
-                items=[]
-            )
-        
-        # 随机选择题目
-        selected = random.sample(all_templates, min(count, len(all_templates)))
-        params = self._generate_params()
-        
-        items = [self._fill_template(t, params) for t in selected]
-        
+        # 无模板时返回空练习集（LLM fallback 由 generate_with_llm 单独调用）
         return PracticeSet(
             student=self.student_name,
             knowledge_point=knowledge_point,
             style=style,
             generated_at=datetime.now(),
-            items=items
+            items=[]
         )
     
     def get_available_templates(self) -> List[str]:
@@ -922,3 +972,183 @@ class PracticeService:
             True
         """
         return sorted(PRACTICE_TEMPLATES.keys())
+    
+    def _build_llm_prompt(self, knowledge_point: str, style: str, count: int) -> str:
+        """构建 LLM 生成变式题的 prompt。
+        
+        Args:
+            knowledge_point: 知识点名称
+            style: 题目风格（基础/变式/提升）
+            count: 需要生成的题目数量
+        
+        Returns:
+            LLM prompt 字符串
+        """
+        style_desc = {
+            '基础': '基础概念题，考查基本概念和公式记忆',
+            '变式': '变式应用题，考查知识迁移和灵活运用',
+            '提升': '提升拓展题，考查综合分析和深度理解',
+            'mixed': '混合难度，包含基础、变式、提升多种题型',
+        }.get(style, '混合难度')
+        
+        prompt = f"""你是一位经验丰富的初中教师，请为知识点"{knowledge_point}"生成{count}道变式练习题。
+
+要求：
+1. 题目风格：{style_desc}
+2. 每道题必须包含：题目、答案、解析三个部分
+3. 题目类型可以多样化（填空题、选择题、计算题、简答题等）
+4. 解析要清晰详细，帮助学生理解解题思路
+5. 如果是选择题，需要提供 4 个选项（A/B/C/D）
+
+请严格按照以下 JSON 格式输出（不要输出其他内容）：
+{{
+    "questions": [
+        {{
+            "question": "题目内容",
+            "answer": "参考答案",
+            "parse": "详细解析",
+            "options": "选项内容（如果是选择题，否则省略此字段）"
+        }}
+    ]
+}}
+
+示例输出：
+{{
+    "questions": [
+        {{
+            "question": "什么是牛顿第一定律？",
+            "answer": "一切物体在没有受到外力作用时，总保持静止状态或匀速直线运动状态",
+            "parse": "牛顿第一定律描述了物体在不受外力时的运动状态，也称为惯性定律"
+        }},
+        {{
+            "question": "关于惯性，下列说法正确的是（ ）",
+            "options": "A. 静止的物体没有惯性  B. 速度越大惯性越大  C. 质量越大惯性越大  D. 月球上没有惯性",
+            "answer": "C",
+            "parse": "惯性是物体的固有属性，只与质量有关，与速度、位置无关"
+        }}
+    ]
+}}
+
+请为知识点"{knowledge_point}"生成{count}道{style}风格的题目："""
+        return prompt
+    
+    def _call_llm(self, prompt: str) -> str:
+        """调用 LLM API 生成内容。
+        
+        Args:
+            prompt: 输入 prompt
+        
+        Returns:
+            LLM 生成的文本内容
+        
+        Raises:
+            RuntimeError: 当 LLM 调用失败时
+        """
+        import os
+        
+        # 支持通过环境变量配置 LLM
+        api_url = os.environ.get('LLM_API_URL', LLM_API_URL)
+        model = os.environ.get('LLM_MODEL', LLM_MODEL)
+        timeout = int(os.environ.get('LLM_TIMEOUT', LLM_TIMEOUT))
+        
+        request_data = {
+            'model': model,
+            'prompt': prompt,
+            'stream': False
+        }
+        
+        try:
+            req = urllib.request.Request(
+                api_url,
+                data=json.dumps(request_data).encode('utf-8'),
+                headers={'Content-Type': 'application/json'},
+                method='POST'
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                result = json.loads(response.read().decode('utf-8'))
+                response_text: str = result.get('response', '')
+                return response_text
+        except urllib.error.URLError as e:
+            raise RuntimeError(f"LLM API 调用失败：{e}")
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"LLM 返回格式错误：{e}")
+        except Exception as e:
+            raise RuntimeError(f"LLM 调用异常：{e}")
+    
+    def _parse_llm_response(self, response: str) -> List[PracticeItem]:
+        """解析 LLM 返回的 JSON 响应。
+        
+        Args:
+            response: LLM 返回的文本
+        
+        Returns:
+            PracticeItem 列表
+        
+        Raises:
+            ValueError: 当响应格式不正确时
+        """
+        import re
+        
+        # 尝试提取 JSON 内容（可能包含在 markdown 代码块中）
+        json_match = re.search(r'\{[\s\S]*\}', response)
+        if not json_match:
+            raise ValueError("LLM 响应中未找到 JSON 格式内容")
+        
+        json_str = json_match.group(0)
+        
+        try:
+            data = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"JSON 解析失败：{e}")
+        
+        if 'questions' not in data:
+            raise ValueError("LLM 响应中缺少 'questions' 字段")
+        
+        items = []
+        for q in data['questions']:
+            if not all(k in q for k in ['question', 'answer', 'parse']):
+                continue  # 跳过格式不完整的题目
+            
+            items.append(PracticeItem(
+                question=q['question'],
+                answer=q['answer'],
+                parse=q.get('parse', ''),
+                options=q.get('options'),
+                style='llm'
+            ))
+        
+        return items
+    
+    def generate_with_llm(
+        self,
+        knowledge_point: str,
+        style: str = 'mixed',
+        count: int = 3
+    ) -> List[PracticeItem]:
+        """使用 LLM 动态生成变式题。
+        
+        当知识点无模板时，调用 LLM 根据知识点名称动态生成练习题。
+        
+        Args:
+            knowledge_point: 知识点名称
+            style: 题目风格，可选 '基础'、'变式'、'提升'、'mixed'（默认）
+            count: 需要生成的题目数量（默认 3）
+        
+        Returns:
+            PracticeItem 列表
+        
+        Raises:
+            RuntimeError: 当 LLM 调用失败时
+            ValueError: 当 LLM 返回格式不正确时
+        
+        Example:
+            >>> service = PracticeService("张三")
+            >>> # 需要配置 LLM_API_URL 环境变量
+            >>> items = service.generate_with_llm("量子力学", style="基础", count=2)
+            >>> len(items) == 2
+            True
+        """
+        prompt = self._build_llm_prompt(knowledge_point, style, count)
+        response = self._call_llm(prompt)
+        return self._parse_llm_response(response)
+    

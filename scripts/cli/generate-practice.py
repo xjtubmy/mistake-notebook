@@ -13,10 +13,12 @@
 """
 
 import argparse
+import hashlib
 import sys
 import random
 from pathlib import Path
 from datetime import datetime
+from typing import Optional, Tuple
 
 # 添加项目根目录到路径以支持 scripts 模块导入
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -606,8 +608,15 @@ KNOWLEDGE_ALIASES = {
 }
 
 
-def generate_practice(knowledge_point: str, style: str = '混合', count: int = 3) -> list:
-    """生成练习题"""
+def generate_practice(knowledge_point: str, style: str = '混合', count: int = 3, difficulty: Optional[Tuple[int, int]] = None) -> list:
+    """生成练习题
+    
+    Args:
+        knowledge_point: 知识点名称
+        style: 练习风格（基础/变式/提升/混合）
+        count: 题目数量
+        difficulty: 难度范围 (min, max)，例如 (1, 2) 简单，(4, 5) 困难
+    """
     # 支持知识点别名
     actual_knowledge = KNOWLEDGE_ALIASES.get(knowledge_point, knowledge_point)
     templates = PRACTICE_TEMPLATES.get(actual_knowledge, None)
@@ -616,20 +625,68 @@ def generate_practice(knowledge_point: str, style: str = '混合', count: int = 
         # 通用模板（如果没有特定知识点模板）
         return generate_generic_practice(style, count)
     
-    practices = []
-    
+    # 收集所有可用题目
+    all_practices = []
     if style == '混合':
-        all_practices = []
         for s in ['基础', '变式', '提升']:
             all_practices.extend(templates.get(s, []))
-        practices = random.sample(all_practices, min(count, len(all_practices)))
     else:
-        style_practices = templates.get(style, [])
-        practices = random.sample(style_practices, min(count, len(style_practices)))
+        all_practices.extend(templates.get(style, []))
+    
+    # 根据难度筛选
+    if difficulty is not None:
+        min_diff, max_diff = difficulty
+        difficulty_map = {'基础': (1, 2), '变式': (3, 3), '提升': (4, 5)}
+        filtered = []
+        for s in ['基础', '变式', '提升']:
+            style_diff = difficulty_map.get(s, (3, 3))
+            # 检查风格难度范围是否与请求的难度范围有交集
+            if min_diff <= style_diff[1] and max_diff >= style_diff[0]:
+                filtered.extend(templates.get(s, []))
+        if filtered:
+            all_practices = filtered
+        # 如果筛选后为空，回退到原始列表
+    
+    # 随机选择题目（带去重，带风格标记）
+    seen_hashes = set()
+    practices_with_style = []  # (template, style)
+    max_attempts = count * 3
+    attempts = 0
+    
+    # 构建带风格的模板列表
+    templated_with_style = []
+    if style == '混合':
+        for s in ['基础', '变式', '提升']:
+            for t in templates.get(s, []):
+                templated_with_style.append((t, s))
+    else:
+        for t in templates.get(style, []):
+            templated_with_style.append((t, style))
+    
+    # 根据难度筛选
+    if difficulty is not None:
+        min_diff, max_diff = difficulty
+        difficulty_map = {'基础': (1, 2), '变式': (3, 3), '提升': (4, 5)}
+        filtered = []
+        for t, t_style in templated_with_style:
+            style_diff = difficulty_map.get(t_style, (3, 3))
+            if min_diff <= style_diff[1] and max_diff >= style_diff[0]:
+                filtered.append((t, t_style))
+        if filtered:
+            templated_with_style = filtered
+    
+    while len(practices_with_style) < count and attempts < max_attempts and templated_with_style:
+        attempts += 1
+        p, p_style = random.choice(templated_with_style)
+        # 简单去重：基于题目模板
+        template_key = p.get('question', '')[:50]
+        if template_key not in seen_hashes:
+            seen_hashes.add(template_key)
+            practices_with_style.append((p, p_style))
     
     # 填充参数（随机生成数值）
     result = []
-    for p in practices:
+    for p, p_style in practices_with_style:
         practice = p.copy()
         
         # 物理 - 力学参数
@@ -655,8 +712,8 @@ def generate_practice(knowledge_point: str, style: str = '混合', count: int = 
         f_buoyancy = round(1.0 * 10 * v * 0.001, 1)
         
         # 物理 - 压强参数
-        s = random.choice([10, 20, 50, 100])
-        p = round(g_weight / (s * 0.0001), 1)
+        s_area = random.choice([10, 20, 50, 100])
+        p_pressure = round(g_weight / (s_area * 0.0001), 1)
         
         # 物理 - 杠杆参数
         f_lever = round(g_weight / 5, 1)
@@ -709,7 +766,7 @@ def generate_practice(knowledge_point: str, style: str = '混合', count: int = 
                     # 浮力
                     v=v, f_buoy=f_buoyancy,
                     # 压强
-                    s=s, p_val=p,
+                    s=s_area, p_val=p_pressure,
                     # 杠杆
                     f_lever_val=f_lever, gl=g_weight, gr=g_weight//2,
                     # 电功率
@@ -732,6 +789,18 @@ def generate_practice(knowledge_point: str, style: str = '混合', count: int = 
                     # 英语 - 通用
                     num=random.choice([2, 3, 5, 10]),
                 )
+        
+        # 添加难度标记（根据风格）
+        difficulty_map = {'基础': random.randint(1, 2), '变式': 3, '提升': random.randint(4, 5), '混合': 3}
+        practice['difficulty'] = difficulty_map.get(p_style, 3)
+        practice['style'] = p_style
+        
+        # 计算题目 hash（用于去重）
+        q = practice.get('question', '')
+        a = practice.get('answer', '')
+        pa = practice.get('parse', '')
+        practice['hash'] = hashlib.md5(f"{q}|{a}|{pa}".encode('utf-8')).hexdigest()[:12]
+        
         result.append(practice)
     
     return result
@@ -750,12 +819,16 @@ def generate_generic_practice(style: str, count: int) -> list:
 
 def build_practice_markdown(practices: list, student: str, knowledge_point: str) -> str:
     """组装练习 Markdown 正文。"""
+    # 计算平均难度
+    avg_diff = sum(p.get('difficulty', 3) for p in practices) / len(practices) if practices else 0
+    
     content = f"""# 📝 举一反三练习
 
 **学生**：{student}  
 **知识点**：{knowledge_point}  
 **生成时间**：{datetime.now().strftime('%Y-%m-%d %H:%M')}  
-**题目数量**：{len(practices)} 道
+**题目数量**：{len(practices)} 道  
+**平均难度**：{'⭐' * round(avg_diff)} ({avg_diff:.1f}/5)
 
 ---
 
@@ -764,7 +837,8 @@ def build_practice_markdown(practices: list, student: str, knowledge_point: str)
 """
 
     for i, p in enumerate(practices, 1):
-        content += f"""### 第 {i} 题
+        diff = p.get('difficulty', 3)
+        content += f"""### 第 {i} 题 {'⭐' * diff}
 
 {p['question']}
 
@@ -813,12 +887,28 @@ def save_practice_md(content: str, output_path: str) -> None:
     print(f"已生成练习 Markdown：{output_path}")
 
 
+def parse_difficulty(diff_str: str) -> Optional[Tuple[int, int]]:
+    """解析难度参数，支持格式：'3' 或 '1-3' 或 '1,3'"""
+    if not diff_str:
+        return None
+    if '-' in diff_str:
+        parts = diff_str.split('-')
+        return (int(parts[0]), int(parts[1]))
+    elif ',' in diff_str:
+        parts = diff_str.split(',')
+        return (int(parts[0]), int(parts[1]))
+    else:
+        d = int(diff_str)
+        return (d, d)
+
+
 def main():
     parser = argparse.ArgumentParser(description='举一反三练习生成')
     parser.add_argument('--student', required=True, help='学生姓名')
     parser.add_argument('--knowledge', required=True, help='知识点')
     parser.add_argument('--count', type=int, default=3, help='题目数量（默认 3）')
     parser.add_argument('--style', choices=['基础', '变式', '提升', '混合'], default='混合', help='题目风格')
+    parser.add_argument('--difficulty', type=str, help='难度范围：1-5 或范围如 1-3（1 最简单，5 最难）')
     parser.add_argument('--output', help='Markdown 输出路径（可选）；PDF 为同路径 .pdf')
     parser.add_argument(
         '--md-only',
@@ -828,10 +918,13 @@ def main():
     
     args = parser.parse_args()
     
-    print(f"正在为 {args.student} 生成《{args.knowledge}》练习题...")
-    print(f"风格：{args.style} | 数量：{args.count}")
+    difficulty = parse_difficulty(args.difficulty) if args.difficulty else None
+    diff_info = f"难度:{args.difficulty}" if difficulty else "难度：全部"
     
-    practices = generate_practice(args.knowledge, args.style, args.count)
+    print(f"正在为 {args.student} 生成《{args.knowledge}》练习题...")
+    print(f"风格：{args.style} | 数量：{args.count} | {diff_info}")
+    
+    practices = generate_practice(args.knowledge, args.style, args.count, difficulty)
     
     if args.output:
         md_path = args.output
