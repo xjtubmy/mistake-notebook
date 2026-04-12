@@ -345,22 +345,224 @@ PRACTICE_TEMPLATES: Dict[str, Dict[str, List[Dict[str, str]]]] = {
             {'question': '某金属 R 与稀盐酸反应生成 RCl₃和氢气，写出该反应的化学方程式：______', 'answer': '2R + 6HCl → 2RCl₃ + 3H₂↑', 'parse': '根据产物 RCl₃可知 R 显 +3 价'},
         ],
     },
+    # ===== 新增知识点（物理）=====
+    '光的反射': {
+        '基础': [
+            {'question': '光在反射时，反射角______入射角。', 'answer': '等于', 'parse': '光的反射定律：反射角等于入射角'},
+            {'question': '入射光线与镜面的夹角为 {angle_inc}°，则反射角为______°。', 'answer': '{angle_ref}', 'parse': '入射角 = 90°-{angle_inc}°={angle_ref}°，反射角等于入射角'},
+            {'question': '我们能从不同方向看到不发光的物体，是因为光在物体表面发生了______反射。', 'answer': '漫', 'parse': '漫反射使光线向各个方向反射'},
+        ],
+        '变式': [
+            {'question': '入射光线向法线靠近 10°，则反射光线将______。', 'answer': '向法线靠近 10°', 'parse': '反射角随入射角变化，变化量相同'},
+            {'question': '一束光垂直射到平面镜上，然后将镜面旋转 {angle_rot}°，则反射光线转过的角度为______°。', 'answer': '{angle_rot2}', 'parse': '镜面转θ，反射光线转 2θ'},
+        ],
+        '提升': [
+            {'question': '两块平面镜互相垂直放置，一束光射到其中一块镜面上，经两次反射后，出射光线与入射光线的关系是______。', 'answer': '平行反向', 'parse': '两次反射后光线偏转 180°'},
+        ],
+    },
+    '电路分析': {
+        '基础': [
+            {'question': '在串联电路中，电流处处______。', 'answer': '相等', 'parse': '串联电路电流特点：I=I₁=I₂'},
+            {'question': '在并联电路中，各支路两端电压______。', 'answer': '相等', 'parse': '并联电路电压特点：U=U₁=U₂'},
+            {'question': '电阻 R₁={r1}Ω 和 R₂={r2}Ω 串联，总电阻为______Ω。', 'answer': '{r_series}', 'parse': '串联总电阻：R=R₁+R₂={r1}+{r2}={r_series}Ω'},
+        ],
+        '变式': [
+            {'question': '电阻 R₁={r1}Ω 和 R₂={r2}Ω 并联，总电阻为______Ω。', 'answer': '{r_parallel}', 'parse': '并联总电阻：1/R=1/R₁+1/R₂，R={r_parallel}Ω'},
+            {'question': '如图所示，开关 S 闭合后，电流表示数变______（选填"大"或"小"）。', 'answer': '大', 'parse': '并联支路增多，总电阻减小，总电流增大'},
+        ],
+        '提升': [
+            {'question': '在如图所示的电路中，电源电压不变。当滑动变阻器的滑片向右移动时，电压表示数______，电流表示数______。', 'answer': '不变；变小', 'parse': '电压表测电源电压不变；总电阻增大，电流减小'},
+        ],
+    },
+    '能量守恒': {
+        '基础': [
+            {'question': '能量既不会凭空______，也不会凭空______，它只会从一种形式______为另一种形式。', 'answer': '产生；消失；转化', 'parse': '能量守恒定律的内容'},
+            {'question': '一个质量为 {mass}kg 的物体从 {height}m 高处自由下落，落地时的动能约为______J。（g 取 10N/kg）', 'answer': '{energy}', 'parse': '重力势能转化为动能：E=mgh={mass}×10×{height}={energy}J'},
+        ],
+        '变式': [
+            {'question': '滚摆从最高点下降到最低点的过程中，______能转化为______能。', 'answer': '重力势；动', 'parse': '高度降低，速度增大'},
+            {'question': '一个物体在粗糙水平面上滑动，最终停下来，这个过程中机械能转化为______能。', 'answer': '内', 'parse': '摩擦生热，机械能转化为内能'},
+        ],
+        '提升': [
+            {'question': '如图所示，小球从斜面滚下撞击木块，木块被推得越远，说明小球的______能越大。', 'answer': '动', 'parse': '转换法：通过木块被推动的距离判断动能大小'},
+        ],
+    },
+    # ===== 新增知识点（数学）=====
+    '不等式': {
+        '基础': [
+            {'question': '解不等式：{ineq_a}x - {ineq_b} > {ineq_c}', 'answer': 'x > {ineq_sol}', 'parse': '移项得{ineq_a}x>{ineq_c}+{ineq_b}={ineq_cx}，x>{ineq_sol}'},
+            {'question': '若 a > b，则 a + c______b + c。', 'answer': '>', 'parse': '不等式性质：两边同加一个数，不等号方向不变'},
+            {'question': '不等式 x ≥ {ineq_b} 的解集在数轴上表示为______。', 'answer': '{ineq_b} 及其右侧所有点', 'parse': '≥表示包含端点，向右画'},
+        ],
+        '变式': [
+            {'question': '解不等式组：{ineq_a}x > {ineq_c} 且 x < {ineq_upper}', 'answer': '{ineq_low} < x < {ineq_upper}', 'parse': '分别解出两个不等式，取交集'},
+            {'question': '若关于 x 的不等式 ax > b 的解集为 x < {ineq_neg_sol}，则 a______0。', 'answer': '<', 'parse': '不等号方向改变，说明 a 为负数'},
+        ],
+        '提升': [
+            {'question': '已知关于 x 的不等式 {ineq_a}x - {ineq_b} ≤ {ineq_c} 的正整数解只有 1、2、3，求参数范围。', 'answer': '需具体计算', 'parse': '解出 x≤某值，该值在 3 和 4 之间'},
+        ],
+    },
+    '概率统计': {
+        '基础': [
+            {'question': '掷一枚均匀的骰子，出现偶数点的概率为______。', 'answer': '1/2', 'parse': '偶数点有 2、4、6 共 3 种，P=3/6=1/2'},
+            {'question': '一组数据 {data1}, {data2}, {data3}, {data4}, {data5} 的平均数为______。', 'answer': '{data_mean}', 'parse': '平均数 = 总和÷个数'},
+            {'question': '数据 2、3、3、4、5 的众数是______。', 'answer': '3', 'parse': '出现次数最多的数是众数'},
+        ],
+        '变式': [
+            {'question': '从装有 {ball_red} 个红球和 {ball_white} 个白球的袋中随机摸出一个球，摸到红球的概率为______。', 'answer': '{prob_red}', 'parse': 'P(红)={ball_red}/({ball_red}+{ball_white})'},
+            {'question': '一组数据的方差越大，说明这组数据越______。', 'answer': '分散（不稳定）', 'parse': '方差反映数据的离散程度'},
+        ],
+        '提升': [
+            {'question': '甲乙两人射击，甲命中率为 {hit_a}，乙命中率为 {hit_b}，两人各射击一次，至少一人命中的概率为______。', 'answer': '{prob_atleast}', 'parse': 'P(至少一人)=1-P(都不中)=1-(1-{hit_a})(1-{hit_b})'},
+        ],
+    },
+    '三角函数': {
+        '基础': [
+            {'question': '在 Rt△ABC 中，∠C=90°，若∠A={angle_tri}°，则 sinA = ______。', 'answer': 'sin{angle_tri}°', 'parse': 'sinA = 对边/斜边'},
+            {'question': 'sin30° = ______，cos60° = ______。', 'answer': '1/2；1/2', 'parse': '特殊角的三角函数值'},
+            {'question': 'tan45° = ______。', 'answer': '1', 'parse': 'tan45°=1'},
+        ],
+        '变式': [
+            {'question': '若 sinα = {sin_val}，且α为锐角，则 cosα = ______。', 'answer': '{cos_val}', 'parse': 'sin²α+cos²α=1'},
+            {'question': '在△ABC 中，若 sinA = cosB，则∠C = ______°。', 'answer': '90', 'parse': 'sinA=cosB=sin(90°-B)，故 A=90°-B，A+B=90°'},
+        ],
+        '提升': [
+            {'question': '已知 tanα = {tan_val}，求 sinα 和 cosα 的值。', 'answer': '需具体计算', 'parse': '构造直角三角形，设对边={tan_val}，邻边=1，求斜边'},
+        ],
+    },
+    # ===== 新增知识点（英语）=====
+    '状语从句': {
+        '基础': [
+            {'question': "I'll call you ______ I arrive at the station.", 'answer': 'when/as soon as', 'parse': '时间状语从句，表示"一...就..."'},
+            {'question': "______ it was raining, we still went out.", 'answer': 'Although/Though', 'parse': '让步状语从句，表示"虽然...但是..."'},
+            {'question': "Study hard, ______ you will pass the exam.", 'answer': 'and', 'parse': '"祈使句+and+陈述句"结构，表示条件'},
+        ],
+        '变式': [
+            {'question': "He was ______ tired ______ he fell asleep immediately.", 'answer': 'so; that', 'parse': 'so...that...引导结果状语从句'},
+            {'question': "Please turn off the lights ______ you leave the room.", 'answer': 'when/before', 'parse': '时间状语从句'},
+        ],
+        '提升': [
+            {'question': "______ you work, ______ progress you'll make.", 'answer': 'The harder; the more', 'parse': 'the+比较级...the+比较级...表示"越...越..."'},
+        ],
+    },
+    '名词性从句': {
+        '基础': [
+            {'question': "I don't know ______ he will come tomorrow.", 'answer': 'if/whether', 'parse': '宾语从句，表示"是否"'},
+            {'question': "______ he said at the meeting surprised everyone.", 'answer': 'What', 'parse': '主语从句，what 在从句中作宾语'},
+            {'question': "The fact is ______ he didn't pass the exam.", 'answer': 'that', 'parse': '表语从句，that 只起连接作用'},
+        ],
+        '变式': [
+            {'question': "Can you tell me ______ the nearest post office?", 'answer': 'where is', 'parse': '宾语从句用陈述语序'},
+            {'question': "I have no idea ______ he lives.", 'answer': 'where', 'parse': '同位语从句，where 在从句中作地点状语'},
+        ],
+        '提升': [
+            {'question': "______ matters most is not the result but the process.", 'answer': 'What', 'parse': '主语从句，what 在从句中作主语'},
+        ],
+    },
+    '虚拟语气': {
+        '基础': [
+            {'question': "If I ______ (be) you, I would accept the offer.", 'answer': 'were', 'parse': '与现在事实相反的虚拟，be 动词用 were'},
+            {'question': "If he ______ (study) harder, he would have passed the exam.", 'answer': 'had studied', 'parse': '与过去事实相反的虚拟，从句用 had done'},
+        ],
+        '变式': [
+            {'question': "I wish I ______ (can) fly.", 'answer': 'could', 'parse': 'wish 后的宾语从句用虚拟语气'},
+            {'question': "It's time that we ______ (go) home.", 'answer': 'went', 'parse': "It's time that...从句用过去式表示虚拟"},
+        ],
+        '提升': [
+            {'question': "______ it rain tomorrow, the match would be put off.", 'answer': 'Should', 'parse': '省略 if 的倒装，Should+ 主语 + 动词原形'},
+            {'question': "He suggested that she ______ (see) a doctor.", 'answer': '(should) see', 'parse': 'suggest 后的宾语从句用 (should)+ 动词原形'},
+        ],
+    },
+    # ===== 新增知识点（化学）=====
+    '化学方程式配平': {
+        '基础': [
+            {'question': '配平：{eq_a}H₂ + O₂ → {eq_a}H₂O', 'answer': '2H₂ + O₂ → 2H₂O', 'parse': '观察法：右边 2 个 H，左边需 2 个 H₂'},
+            {'question': '配平：Fe + {eq_o2}O₂ → Fe₃O₄', 'answer': '3Fe + 2O₂ → Fe₃O₄', 'parse': '最小公倍数法：O 的最小公倍数为 4'},
+            {'question': '配平：KMnO₄ → K₂MnO₄ + MnO₂ + O₂↑', 'answer': '2KMnO₄ → K₂MnO₄ + MnO₂ + O₂↑', 'parse': '观察法：右边 2 个 K，左边需 2 个 KMnO₄'},
+        ],
+        '变式': [
+            {'question': '配平：{eq_c3}C₃H₈ + O₂ → CO₂ + H₂O', 'answer': 'C₃H₈ + 5O₂ → 3CO₂ + 4H₂O', 'parse': '定一法：设 C₃H₈系数为 1'},
+            {'question': '配平：Al + HCl → AlCl₃ + H₂↑', 'answer': '2Al + 6HCl → 2AlCl₃ + 3H₂↑', 'parse': '最小公倍数法配平 Cl 和 H'},
+        ],
+        '提升': [
+            {'question': '配平氧化还原反应：KMnO₄ + HCl → KCl + MnCl₂ + Cl₂↑ + H₂O', 'answer': '2KMnO₄ + 16HCl → 2KCl + 2MnCl₂ + 5Cl₂↑ + 8H₂O', 'parse': '化合价升降法配平'},
+        ],
+    },
+    '溶液浓度': {
+        '基础': [
+            {'question': '溶质质量分数 = ______×100%。', 'answer': '溶质质量/溶液质量', 'parse': '溶质质量分数公式'},
+            {'question': '将 {solute}g 食盐溶解在 {solvent}g 水中，所得溶液的溶质质量分数为______。', 'answer': '{mass_percent}%', 'parse': '质量分数={solute}/({solute}+{solvent})×100%={mass_percent}%'},
+            {'question': '配制 {solution_mass}g 质量分数为 {percent}%的 NaCl 溶液，需要 NaCl______g。', 'answer': '{need_solute}g', 'parse': '溶质质量=溶液质量×质量分数'},
+        ],
+        '变式': [
+            {'question': '将 {mass_percent}%的蔗糖溶液 {dilute_mass}g 稀释成 {dilute_percent}%的溶液，需要加水______g。', 'answer': '{add_water}g', 'parse': '稀释前后溶质质量不变'},
+            {'question': '蒸发 {evap}g 水后，溶液的溶质质量分数变______（选填"大"或"小"）。', 'answer': '大', 'parse': '溶剂减少，溶质不变，浓度增大'},
+        ],
+        '提升': [
+            {'question': '两种不同浓度的同种溶液混合，混合后溶液的浓度______。', 'answer': '介于两者之间', 'parse': '混合浓度介于原两浓度之间，靠近质量较大者'},
+        ],
+    },
+    '机械效率': {
+        '基础': [
+            {'question': '机械效率η = ______×100%。', 'answer': 'W 有用/W 总', 'parse': '机械效率公式'},
+            {'question': '使用任何机械都______（选填"能"或"不能"）省功。', 'answer': '不能', 'parse': '功的原理：使用任何机械都不省功'},
+            {'question': '用滑轮组提升重 {weight}N 的物体，拉力为 {force}N，若绳子自由端移动距离是物体上升高度的 3 倍，则机械效率为______。', 'answer': '{efficiency}%', 'parse': 'η=W 有用/W 总=Gh/Fs={weight}/({force}×3)×100%={efficiency}%'},
+        ],
+        '变式': [
+            {'question': '同一滑轮组，提升的物体越重，机械效率越______。', 'answer': '高', 'parse': '额外功基本不变，有用功占比增大'},
+            {'question': '减小摩擦、减轻动滑轮重力可以______机械效率。', 'answer': '提高', 'parse': '减小额外功，提高效率'},
+        ],
+        '提升': [
+            {'question': '斜面长 {slope_l}m、高 {slope_h}m，用 {force_slope}N 的力将重 {weight_slope}N 的物体匀速拉上斜面，机械效率为______。', 'answer': '{slope_eff}%', 'parse': 'η=W 有用/W 总=Gh/FL'},
+        ],
+    },
+    '密度': {
+        '基础': [
+            {'question': '密度的计算公式为ρ = ______。', 'answer': 'm/V', 'parse': '密度 = 质量/体积'},
+            {'question': '水的密度为______kg/m³ = ______g/cm³。', 'answer': '1.0×10³；1', 'parse': '水的密度是常数'},
+            {'question': '一个质量为 {density_mass}g 的物体，体积为 {density_vol}cm³，则它的密度为______g/cm³。', 'answer': '{density_calc}', 'parse': 'ρ=m/V={density_mass}/{density_vol}={density_calc}g/cm³'},
+        ],
+        '变式': [
+            {'question': '一块冰熔化成水后，质量______，体积______，密度______。', 'answer': '不变；变小；变大', 'parse': '质量是物质属性不变，冰的密度小于水'},
+            {'question': '将一根铁丝剪去一半，剩余部分的密度______。', 'answer': '不变', 'parse': '密度是物质特性，与质量体积无关'},
+        ],
+        '提升': [
+            {'question': '一个空心铜球质量为 {density_mass}g，体积为 {density_vol}cm³，已知铜的密度为 8.9g/cm³，则空心部分体积为______cm³。', 'answer': '需具体计算', 'parse': 'V 空=V 总-m/ρ铜'},
+        ],
+    },
 }
 
 # 知识点别名映射
 KNOWLEDGE_ALIASES: Dict[str, str] = {
+    # 物理
     '欧姆': '欧姆定律', '欧姆定律': '欧姆定律',
     '浮力': '浮力', '压强': '压强', '杠杆': '杠杆', '电功率': '电功率',
     '力的合成': '力的合成', '牛顿第一定律': '牛顿第一定律', '惯性': '牛顿第一定律',
+    '光的反射': '光的反射', '反射': '光的反射', '光的反射定律': '光的反射',
+    '电路分析': '电路分析', '电路': '电路分析', '串联并联': '电路分析',
+    '能量守恒': '能量守恒', '能量': '能量守恒', '机械能': '能量守恒',
+    '机械效率': '机械效率', '效率': '机械效率', '滑轮组': '机械效率',
+    '密度': '密度', 'ρ': '密度', 'density': '密度',
+    # 数学
     '一元一次方程': '一元一次方程', '方程': '一元一次方程',
     '二次函数': '二次函数', '抛物线': '二次函数',
     '勾股定理': '勾股定理', '三角形全等': '三角形全等', '全等三角形': '三角形全等',
     '平行四边形': '平行四边形',
+    '不等式': '不等式', '不等': '不等式', '不等式组': '不等式',
+    '概率统计': '概率统计', '概率': '概率统计', '统计': '概率统计', '平均数': '概率统计',
+    '三角函数': '三角函数', '三角': '三角函数', 'sin': '三角函数', 'cos': '三角函数', 'tan': '三角函数',
+    # 英语
     '现在完成时': '现在完成时', '完成时': '现在完成时',
     '一般过去时': '一般过去时', '过去时': '一般过去时',
     '定语从句': '定语从句', '从句': '定语从句',
     '被动语态': '被动语态', '被动': '被动语态',
-    '化学方程式': '化学方程式', '方程式': '化学方程式',
+    '状语从句': '状语从句', '状语': '状语从句', '时间状语': '状语从句', '条件状语': '状语从句',
+    '名词性从句': '名词性从句', '名词从句': '名词性从句', '宾语从句': '名词性从句', '主语从句': '名词性从句',
+    '虚拟语气': '虚拟语气', '虚拟': '虚拟语气', 'if 虚拟': '虚拟语气',
+    # 化学
+    '化学方程式': '化学方程式', '方程式': '化学方程式', '化学反应': '化学方程式',
+    '化学方程式配平': '化学方程式配平', '配平': '化学方程式配平', '方程式配平': '化学方程式配平',
+    '溶液浓度': '溶液浓度', '浓度': '溶液浓度', '质量分数': '溶液浓度', '溶质': '溶液浓度',
 }
 
 VALID_STYLES = frozenset({'基础', '变式', '提升', 'mixed'})
@@ -478,6 +680,81 @@ class PracticeService:
         ac_para = random.choice([10, 12, 16, 20])
         ao_para = ac_para / 2
         
+        # 光的反射参数
+        angle_inc = random.choice([30, 40, 50, 60])
+        angle_ref = 90 - angle_inc
+        angle_rot = random.choice([15, 20, 30])
+        angle_rot2 = angle_rot * 2
+        
+        # 电路分析参数
+        r1 = random.choice([5, 10, 15, 20])
+        r2 = random.choice([5, 10, 15, 20])
+        r_series = r1 + r2
+        r_parallel = round((r1 * r2) / (r1 + r2), 1)
+        
+        # 能量守恒参数
+        mass = random.choice([1, 2, 3, 5])
+        height = random.choice([2, 5, 10, 20])
+        energy = mass * 10 * height
+        
+        # 不等式参数
+        ineq_a = random.choice([2, 3, 4, 5])
+        ineq_b = random.choice([3, 5, 7, 9])
+        ineq_c = ineq_a * random.choice([2, 3, 4]) + ineq_b
+        ineq_cx = ineq_c + ineq_b
+        ineq_sol = ineq_cx / ineq_a
+        ineq_upper = random.choice([5, 6, 7, 8])
+        ineq_low = round(ineq_sol, 1)
+        ineq_neg_sol = -ineq_sol
+        
+        # 概率统计参数
+        data_vals = [random.randint(1, 20) for _ in range(5)]
+        data_mean = round(sum(data_vals) / 5, 1)
+        ball_red = random.choice([3, 4, 5])
+        ball_white = random.choice([2, 3, 4])
+        prob_red = f"{ball_red}/{ball_red + ball_white}"
+        hit_a = round(random.choice([0.6, 0.7, 0.8]), 1)
+        hit_b = round(random.choice([0.5, 0.6, 0.7]), 1)
+        prob_atleast = round(1 - (1 - hit_a) * (1 - hit_b), 2)
+        
+        # 三角函数参数
+        angle_tri = random.choice([30, 45, 60])
+        sin_val = round(random.choice([0.6, 0.8, 0.5]), 2)
+        cos_val = round((1 - sin_val ** 2) ** 0.5, 2)
+        tan_val = random.choice([1, 1.73, 0.58])
+        
+        # 化学方程式配平参数
+        eq_a = 2
+        eq_o2 = 2
+        eq_c3 = 1
+        
+        # 溶液浓度参数
+        solute = random.choice([10, 20, 25, 30])
+        solvent = random.choice([90, 100, 150, 200])
+        mass_percent = round(solute / (solute + solvent) * 100, 1)
+        solution_mass = random.choice([100, 200, 500])
+        percent = random.choice([5, 10, 15, 20])
+        need_solute = solution_mass * percent // 100
+        dilute_mass = random.choice([100, 200])
+        dilute_percent = random.choice([5, 10])
+        add_water = round(dilute_mass * (mass_percent / dilute_percent - 1), 0)
+        evap = random.choice([20, 30, 50])
+        
+        # 机械效率参数
+        weight = random.choice([100, 150, 200])
+        force = random.choice([40, 50, 60, 70])
+        efficiency = round(weight / (force * 3) * 100, 1)
+        slope_l = random.choice([3, 4, 5])
+        slope_h = random.choice([1, 2])
+        force_slope = random.choice([30, 40, 50])
+        weight_slope = random.choice([60, 80, 100])
+        slope_eff = round(weight_slope * slope_h / (force_slope * slope_l) * 100, 1)
+        
+        # 密度参数
+        density_mass = random.choice([27, 54, 79, 89])
+        density_vol = random.choice([10, 20, 30])
+        density_calc = round(density_mass / density_vol, 2)
+        
         return {
             'f1': f1, 'f2': f2, 'f3': f3, 'diff': diff, 'result': result_force, 'dir': direction,
             'g': g, 'u': u, 'i': i, 'r': r, 'u1': u1, 'u2': u2, 'i1': i1, 'i2': i2,
@@ -495,6 +772,35 @@ class PracticeService:
             'ac_para_val': ac_para, 'ao_para_val': ao_para, 'bd_para_val': random.choice([8, 14, 18, 24]),
             'bo_para_val': random.choice([4, 7, 9, 12]),
             'num': random.choice([2, 3, 5, 10]),
+            # 光的反射
+            'angle_inc': angle_inc, 'angle_ref': angle_ref, 'angle_rot': angle_rot, 'angle_rot2': angle_rot2,
+            # 电路分析
+            'r1': r1, 'r2': r2, 'r_series': r_series, 'r_parallel': r_parallel,
+            # 能量守恒
+            'mass': mass, 'height': height, 'energy': energy,
+            # 不等式
+            'ineq_a': ineq_a, 'ineq_b': ineq_b, 'ineq_c': ineq_c, 'ineq_cx': ineq_cx,
+            'ineq_sol': ineq_sol, 'ineq_upper': ineq_upper, 'ineq_low': ineq_low, 'ineq_neg_sol': ineq_neg_sol,
+            # 概率统计
+            'data1': data_vals[0], 'data2': data_vals[1], 'data3': data_vals[2],
+            'data4': data_vals[3], 'data5': data_vals[4], 'data_mean': data_mean,
+            'ball_red': ball_red, 'ball_white': ball_white, 'prob_red': prob_red,
+            'hit_a': hit_a, 'hit_b': hit_b, 'prob_atleast': prob_atleast,
+            # 三角函数
+            'angle_tri': angle_tri, 'sin_val': sin_val, 'cos_val': cos_val, 'tan_val': tan_val,
+            # 化学方程式配平
+            'eq_a': eq_a, 'eq_o2': eq_o2, 'eq_c3': eq_c3,
+            # 溶液浓度
+            'solute': solute, 'solvent': solvent, 'mass_percent': mass_percent,
+            'solution_mass': solution_mass, 'percent': percent, 'need_solute': need_solute,
+            'dilute_mass': dilute_mass, 'dilute_percent': dilute_percent, 'add_water': int(add_water),
+            'evap': evap,
+            # 机械效率
+            'weight': weight, 'force': force, 'efficiency': efficiency,
+            'slope_l': slope_l, 'slope_h': slope_h, 'force_slope': force_slope,
+            'weight_slope': weight_slope, 'slope_eff': slope_eff,
+            # 密度
+            'density_mass': density_mass, 'density_vol': density_vol, 'density_calc': density_calc,
         }
     
     def _fill_template(self, template: Dict[str, str], params: Dict[str, Any]) -> PracticeItem:

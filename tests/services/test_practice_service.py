@@ -389,5 +389,82 @@ class TestPracticeTemplates(TestCase):
                     self.assertIn('parse', t)
 
 
+class TestNewKnowledgePoints(TestCase):
+    """新增知识点模板测试（Task 2-7）。"""
+    
+    def setUp(self) -> None:
+        self.service = PracticeService('测试学生')
+    
+    def test_template_count_at_least_30(self) -> None:
+        """测试知识点数量≥30 个。"""
+        templates = self.service.get_available_templates()
+        self.assertGreaterEqual(len(templates), 30, f"知识点数量 {len(templates)} < 30")
+    
+    def test_new_physics_templates(self) -> None:
+        """测试新增物理知识点模板。"""
+        new_physics = ['光的反射', '电路分析', '能量守恒', '机械效率', '密度']
+        for kp in new_physics:
+            with self.subTest(knowledge_point=kp):
+                self.assertIn(kp, PRACTICE_TEMPLATES, f"缺少物理知识点：{kp}")
+                ps = self.service.generate_practice(kp, style='mixed', count=2)
+                self.assertGreater(ps.count, 0, f"{kp} 无法生成练习")
+    
+    def test_new_math_templates(self) -> None:
+        """测试新增数学知识点模板。"""
+        new_math = ['不等式', '概率统计', '三角函数']
+        for kp in new_math:
+            with self.subTest(knowledge_point=kp):
+                self.assertIn(kp, PRACTICE_TEMPLATES, f"缺少数学知识点：{kp}")
+                ps = self.service.generate_practice(kp, style='mixed', count=2)
+                self.assertGreater(ps.count, 0, f"{kp} 无法生成练习")
+    
+    def test_new_english_templates(self) -> None:
+        """测试新增英语知识点模板。"""
+        new_english = ['状语从句', '名词性从句', '虚拟语气']
+        for kp in new_english:
+            with self.subTest(knowledge_point=kp):
+                self.assertIn(kp, PRACTICE_TEMPLATES, f"缺少英语知识点：{kp}")
+                ps = self.service.generate_practice(kp, style='mixed', count=2)
+                self.assertGreater(ps.count, 0, f"{kp} 无法生成练习")
+    
+    def test_new_chemistry_templates(self) -> None:
+        """测试新增化学知识点模板。"""
+        new_chemistry = ['化学方程式配平', '溶液浓度']
+        for kp in new_chemistry:
+            with self.subTest(knowledge_point=kp):
+                self.assertIn(kp, PRACTICE_TEMPLATES, f"缺少化学知识点：{kp}")
+                ps = self.service.generate_practice(kp, style='mixed', count=2)
+                self.assertGreater(ps.count, 0, f"{kp} 无法生成练习")
+    
+    def test_new_alias_mapping(self) -> None:
+        """测试新增知识点别名映射。"""
+        alias_tests = [
+            ('反射', '光的反射'),
+            ('电路', '电路分析'),
+            ('能量', '能量守恒'),
+            ('效率', '机械效率'),
+            ('不等', '不等式'),
+            ('概率', '概率统计'),
+            ('三角', '三角函数'),
+            ('状语', '状语从句'),
+            ('名词从句', '名词性从句'),
+            ('虚拟', '虚拟语气'),
+            ('配平', '化学方程式配平'),
+            ('浓度', '溶液浓度'),
+            ('ρ', '密度'),
+        ]
+        for alias, expected in alias_tests:
+            with self.subTest(alias=alias):
+                resolved = self.service._resolve_knowledge_point(alias)
+                self.assertEqual(resolved, expected, f"别名 '{alias}' 应映射到 '{expected}'，实际为 '{resolved}'")
+    
+    def test_template_question_count(self) -> None:
+        """测试每个知识点至少 3 道模板题。"""
+        for kp, styles in PRACTICE_TEMPLATES.items():
+            with self.subTest(knowledge_point=kp):
+                total = sum(len(templates) for templates in styles.values())
+                self.assertGreaterEqual(total, 3, f"{kp} 只有{total}道题，少于 3 道")
+
+
 if __name__ == '__main__':
     main()
