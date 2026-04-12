@@ -39,7 +39,22 @@ _pdf_engine = PDFEngine()
 def load_mistakes(student: str, subject: str = None, unit: str = None) -> list:
     """加载学生错题（从 analysis.md 读取解析）"""
     mistakes = []
-    base_path = Path(f'data/mistake-notebook/students/{student}/mistakes')
+    
+    # 尝试多个可能的数据目录
+    possible_paths = [
+        Path('/home/ubuntu/clawd/data/mistake-notebook/students'),
+        Path(__file__).parent.parent.parent / 'data' / 'mistake-notebook' / 'students',
+        Path.cwd() / 'data' / 'mistake-notebook' / 'students',
+    ]
+    
+    base_path = None
+    for p in possible_paths:
+        if (p / student / 'mistakes').exists():
+            base_path = p / student / 'mistakes'
+            break
+    
+    if base_path is None:
+        base_path = possible_paths[0] / student / 'mistakes'
     
     if not base_path.exists():
         return mistakes

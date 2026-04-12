@@ -303,6 +303,10 @@ def get_student_dir(
     """
     if base is None:
         base = Path("data/mistake-notebook/students")
+    else:
+        # 如果 base 不以 students 结尾，则添加 students 子目录
+        if base.name != 'students':
+            base = base / 'students'
     
     student_dir = base / student_name
     student_dir.mkdir(parents=True, exist_ok=True)

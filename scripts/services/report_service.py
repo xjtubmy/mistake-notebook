@@ -136,8 +136,22 @@ class ReportService:
             '张三'
         """
         self.student_name = student_name
-        self.base_dir = base_dir
-        self.student_dir = get_student_dir(student_name, base_dir)
+        if base_dir is None:
+            # 尝试多个可能的数据目录
+            possible_paths = [
+                Path('/home/ubuntu/clawd/data/mistake-notebook'),
+                Path(__file__).parent.parent.parent / 'data' / 'mistake-notebook',
+                Path.cwd() / 'data' / 'mistake-notebook',
+            ]
+            for p in possible_paths:
+                if (p / 'students' / student_name).exists():
+                    self.base_dir = p
+                    break
+            else:
+                self.base_dir = possible_paths[0]
+        else:
+            self.base_dir = base_dir
+        self.student_dir = get_student_dir(student_name, self.base_dir)
     
     @staticmethod
     def _generate_chart_parallel(
