@@ -313,3 +313,65 @@ def is_effective_due_on_or_before(effective_due: str, target_date: str) -> bool:
         return False
     
     return due <= tgt
+
+
+# 完成状态标记（用于 due_date_is_scheduled）
+COMPLETED_DUE_MARKERS = frozenset({"completed", "done", "none"})
+
+
+def due_date_is_scheduled(fm: dict) -> bool:
+    """
+    判断 frontmatter 中是否有有效的复习计划。
+    
+    用于「今日待复习」队列过滤：只有已安排复习计划的题目才应出现在队列中。
+    第一轮复习（review-round 0）使用 created+1 作为到期日；
+    后续轮次使用 due-date 字段；
+    已完成（due-date 为 completed/done/none）的题目不视为有复习计划。
+    
+    Args:
+        fm: frontmatter 字典，包含 review-round、created、due-date 等字段
+    
+    Returns:
+        True 表示有复习计划，False 表示无计划或已完成
+    
+    Example:
+        >>> due_date_is_scheduled({'review-round': '0', 'created': '2026-04-12'})
+        True
+        >>> due_date_is_scheduled({'review-round': '1', 'due-date': '2026-04-15'})
+        True
+        >>> due_date_is_scheduled({'due-date': 'completed'})
+        False
+        >>> due_date_is_scheduled({'due-date': 'done'})
+        False
+        >>> due_date_is_scheduled({})
+        False
+    """
+    try:
+        rr = int(fm.get("review-round", 0) or 0)
+    except ValueError:
+        rr = 0
+    
+    # 第一轮：检查是否有有效的 created 日期
+    if rr == 0:
+        dt = parse_created_date(fm.get("created"))
+        if dt is not None:
+            return True
+        return False
+    
+    # 后续轮次：检查 due-date 是否有效
+    raw = (fm.get("due-date") or "").strip()
+    if not raw:
+        return False
+    
+    # 检查是否已完成
+    low = raw.lower()
+    if low in COMPLETED_DUE_MARKERS:
+        return False
+    
+    # 尝试解析为日期
+    try:
+        datetime.strptime(raw, "%Y-%m-%d")
+    except ValueError:
+        return False
+    
+    return True
