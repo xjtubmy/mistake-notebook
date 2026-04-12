@@ -62,6 +62,24 @@ class BatchResult:
 
 
 @dataclass
+class ReviewHistoryEntry:
+    """复习历史条目
+    
+    Attributes:
+        date: 复习日期
+        subject: 学科
+        confidence: 掌握度
+        mistake_id: 错题 ID
+        knowledge_point: 知识点
+    """
+    date: date
+    subject: str
+    confidence: str
+    mistake_id: str
+    knowledge_point: str
+
+
+@dataclass
 class ReviewStats:
     """复习统计信息
     
@@ -437,3 +455,115 @@ class ReviewService:
             stats.average_round = total_rounds / stats.total_mistakes
         
         return stats
+    
+    def get_review_history(self, period: str = 'month') -> List[ReviewHistoryEntry]:
+        """获取复习历史数据
+        
+        根据指定的时间周期，返回复习历史数据，包括日期、学科、掌握度等信息。
+        用于生成复习热力图等可视化图表。
+        
+        Args:
+            period: 时间周期，支持：
+                    - 'week': 最近 7 天
+                    - 'month': 最近 30 天
+                    - 'year': 最近 365 天
+                    - 'all': 所有历史数据
+                    - 或自定义格式 'YYYY-MM'（指定月份）
+        
+        Returns:
+            ReviewHistoryEntry 列表，按日期升序排序
+        
+        Example:
+            >>> service = ReviewService("张三")
+            >>> history = service.get_review_history(period='month')
+            >>> len(history) >= 0
+            True
+        """
+        today = date.today()
+        
+        # 计算起始日期
+        if period == 'week':
+            start_date = today - timedelta(days=7)
+        elif period == 'month':
+            start_date = today - timedelta(days=30)
+        elif period == 'year':
+            start_date = today - timedelta(days=365)
+        elif period == 'all':
+            start_date = date(2000, 1, 1)  # 足够早的日期
+        else:
+            # 尝试解析 YYYY-MM 格式
+            try:
+                year_month = date.fromisoformat(f"{period}-01")
+                start_date = year_month.replace(day=1)
+                # 结束日期为下个月第一天
+                if year_month.month == 12:
+                    end_date = year_month.replace(year=year_month.year + 1, month=1, day=1)
+                else:
+                    end_date = year_month.replace(month=year_month.month + 1, day=1)
+            except ValueError:
+                # 无法解析，默认为 month
+                start_date = today - timedelta(days=30)
+                end_date = today
+        
+        if period not in ['week', 'month', 'year', 'all']:
+            end_date = today
+        
+        history: List[ReviewHistoryEntry] = []
+        
+        # 查找所有错题文件
+        mistake_files = find_mistake_files(self.student_dir)
+        
+        for file_path in mistake_files:
+            mistake = self._parse_mistake_from_file(file_path)
+            if mistake is None:
+                continue
+            
+            # 根据 review-round 和 created 推断复习历史
+            # 假设每轮复习都产生了记录
+            review_round = mistake.review_round
+            
+            # 如果是已完成的，使用 due_date 作为最后复习日期
+            if mistake.is_completed():
+                # 已完成：使用到期日作为参考
+                if start_date <= mistake.due_date <= end_date:
+                    history.append(ReviewHistoryEntry(
+                        date=mistake.due_date,
+                        subject=mistake.subject.value,
+                        confidence=mistake.confidence.value,
+                        mistake_id=mistake.id,
+                        knowledge_point=mistake.knowledge_point,
+                    ))
+            else:
+                # 未完成：根据 review_round 推断历史复习
+                if review_round > 0:
+                    # 有复习历史，根据轮次推算复习日期
+                    # 简化处理：使用 created + 轮次 * 平均间隔 估算
+                    from scripts.core.srs import SRS_INTERVALS
+                    
+                    review_dates = []
+                    current_date = mistake.created
+                    
+                    for round_num in range(1, review_round + 1):
+                        if round_num <= len(SRS_INTERVALS):
+                            interval = SRS_INTERVALS[round_num - 1]
+                        else:
+                            interval = 30  # 默认间隔
+                        
+                        current_date = current_date + timedelta(days=interval)
+                        review_dates.append(current_date)
+                    
+                    # 过滤在时间范围内的复习记录
+                    for review_date in review_dates:
+                        if start_date <= review_date <= end_date:
+                            history.append(ReviewHistoryEntry(
+                                date=review_date,
+                                subject=mistake.subject.value,
+                                confidence=mistake.confidence.value,
+                                mistake_id=mistake.id,
+                                knowledge_point=mistake.knowledge_point,
+                            ))
+        
+        # 按日期排序
+        history.sort(key=lambda x: x.date)
+        
+        return history

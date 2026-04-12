@@ -324,6 +324,27 @@ generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
         kp_stats = self._analyze_knowledge_points(mistakes)
         sorted_kp = sorted(kp_stats.values(), key=lambda x: -x.mistake_count)[:top_n]
         
+        # 生成错误类型柱状图
+        chart_path: Optional[Path] = None
+        error_type_total: Dict[str, int] = {}
+        for stats in kp_stats.values():
+            for err_type, count in stats.error_types.items():
+                error_type_total[err_type] = error_type_total.get(err_type, 0) + count
+        
+        if error_type_total:
+            chart_engine = ChartEngine()
+            chart_output_dir = output_path.parent if output_path else self.student_dir / "reports"
+            chart_output_dir.mkdir(parents=True, exist_ok=True)
+            chart_filename = f"error_type_bar_{self.student_name}.png"
+            chart_path = chart_output_dir / chart_filename
+            
+            error_type_data = {k: float(v) for k, v in error_type_total.items()}
+            chart_engine.bar_chart(
+                data=error_type_data,
+                title="错误类型分布",
+                output_path=chart_path
+            )
+        
         # 生成报告
         now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
         total_mistakes = sum(s.mistake_count for s in kp_stats.values())
@@ -392,6 +413,15 @@ generated: {now_str}
 
 """)
         
+        # 添加错误类型柱状图到报告
+        if chart_path and chart_path.exists():
+            report_lines.append(f"""
+## 📊 错误类型分布
+
+![错误类型柱状图]({chart_path})
+
+""")
+        
         report_lines.append(f"""## 📅 突破计划
 
 | 周次 | 目标 | 完成标记 |
@@ -416,7 +446,8 @@ generated: {now_str}
             metadata={
                 'top_n': top_n,
                 'total_mistakes': total_mistakes,
-                'knowledge_points_count': len(kp_stats)
+                'knowledge_points_count': len(kp_stats),
+                'error_type_chart_path': str(chart_path) if chart_path else None
             },
             output_path=output_path or out_names.default_weak_points_path(self.student_name, top_n)
         )
@@ -586,6 +617,39 @@ generated: {now_str}
                 else:
                     report_lines.append(f"- **{err_type}**：针对性练习")
         
+        # 生成复习热力图
+        heatmap_path: Optional[Path] = None
+        try:
+            review_service = ReviewService(self.student_name, base_dir=self.base_dir)
+            # 获取当月的复习历史
+            history = review_service.get_review_history(period=year_month)
+            
+            if history:
+                # 准备热力图数据
+                heatmap_data = []
+                for entry in history:
+                    heatmap_data.append({
+                        'date': entry.date.strftime('%Y-%m-%d'),
+                        'value': 1,  # 每次复习计数为 1
+                        'subject': entry.subject,
+                    })
+                
+                # 生成热力图
+                chart_engine = ChartEngine()
+                chart_output_dir = output_path.parent if output_path else self.student_dir / "reports"
+                chart_output_dir.mkdir(parents=True, exist_ok=True)
+                heatmap_filename = f"review_heatmap_{year_month}_{self.student_name}.png"
+                heatmap_path = chart_output_dir / heatmap_filename
+                
+                chart_engine.calendar_heatmap(
+                    data=heatmap_data,
+                    title=f"{ym_label}复习进度热力图",
+                    output_path=heatmap_path,
+                )
+        except Exception:
+            # 热力图生成失败不影响报告主体
+            pass
+        
         report_lines.append(f"""
 ---
 
@@ -594,6 +658,19 @@ generated: {now_str}
 - [ ] 减少 {top_error[0][0] if top_error else '错误'} 的发生
 - [ ] 重点攻克 {top_weak[0][0] if top_weak else '薄弱知识点'}
 - [ ] 建立错题复习习惯，每周复习 1 次
+
+---
+
+## 🔥 复习热力图
+
+""")
+        
+        if heatmap_path and heatmap_path.exists():
+            report_lines.append(f"![复习热力图]({heatmap_path})")
+        else:
+            report_lines.append("💡 暂无复习数据，开始你的第一次复习吧！")
+        
+        report_lines.append(f"""
 
 ---
 
@@ -610,7 +687,8 @@ generated: {now_str}
             metadata={
                 'year_month': year_month,
                 'subject': subject,
-                'total_mistakes': total
+                'total_mistakes': total,
+                'heatmap_generated': heatmap_path is not None
             },
             output_path=output_path or out_names.default_monthly_report_path(
                 self.student_name, year_month, subject
