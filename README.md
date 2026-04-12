@@ -35,6 +35,7 @@
 - 🔗 **双向链接**：题目↔知识点，Obsidian 图谱可视化
 - 🤖 **自动 Lint**：定期扫描矛盾、孤儿页、缺失关联（`lint-wiki.py`）
 - 📊 **Dataview 查询**：在 Obsidian 中任意查询统计
+- 🔄 **批量迁移**：一键将现有错题关联到知识点（`migrate-to-wiki.py`）
 
 **目录结构**：
 ```
@@ -58,6 +59,10 @@ python3 scripts/lint-wiki.py --student "曲凌松"
 
 # 验证链接有效性
 python3 scripts/verify-links.py --student "曲凌松"
+
+# 🆕 批量迁移：将现有错题关联到知识点
+python3 scripts/migrate-to-wiki.py --student "曲凌松"
+python3 scripts/migrate-to-wiki.py --student "曲凌松" --dry-run  # 预览模式
 ```
 
 **向后兼容**：现有命令（`今天有什么要复习的 `、` 复习完了`、` 生成月报`）全部保留，只是数据源扩展到 `wiki/` 目录。
@@ -98,6 +103,37 @@ python3 path/to/mistake-notebook/scripts/check-deps.py
 | `create-concept.py` | 基于现有错题自动创建知识点页面 |
 | `lint-wiki.py` | 知识库健康检查（孤儿页、缺失关联、过期内容） |
 | `verify-links.py` | 验证错题到知识点的链接有效性 |
+| `migrate-to-wiki.py` 🆕 | 批量迁移：扫描错题→创建知识点→建立双向链接 |
+
+### 🆕 举一反三模板库（2026-04-12 更新）
+
+`generate-practice.py` 已扩展至 **17 个知识点**，覆盖物理、数学、英语、化学：
+
+| 学科 | 知识点 |
+|------|--------|
+| 物理 (7) | 力的合成、牛顿第一定律、欧姆定律、浮力、压强、杠杆、电功率 |
+| 数学 (5) | 一元一次方程、二次函数、勾股定理、三角形全等、平行四边形 |
+| 英语 (4) | 现在完成时、一般过去时、定语从句、被动语态 |
+| 化学 (1) | 化学方程式 |
+
+**支持别名**：说"欧姆"="欧姆定律"，"完成时"="现在完成时"，"方程"="一元一次方程"
+
+### 🆕 学生档案初始化（2026-04-12 新增）
+
+`init-student.py` 交互式创建学生档案：
+
+```bash
+# 交互模式（推荐）
+python3 scripts/init-student.py
+
+# 非交互模式
+python3 scripts/init-student.py --name "张三" --grade "八年级" --non-interactive
+```
+
+**自动创建**：
+- 学生档案 `profile.md`（含教材版本、单元映射）
+- 目录结构（mistakes/wiki/practice/reports）
+- 各目录 README 说明文件
 
 ## 文档索引
 
@@ -117,12 +153,27 @@ mistake-notebook/
 ├── SKILL.md          # 智能体入口
 ├── reference.md
 ├── examples.md
+├── README.md         # 项目说明（本文件）
 ├── docs/             # 详细文档（auto-review-update, cron-setup, etc.）
 ├── resources/        # 模板、错因类型、课标映射等
-├── scripts/          # 导出、更新复习、提醒、分析、Wiki 工具
-│   ├── create-concept.py    # 🆕 创建知识点页面
-│   ├── lint-wiki.py         # 🆕 知识库健康检查
-│   └── verify-links.py      # 🆕 验证链接有效性
+├── scripts/          # 核心脚本
+│   # 错题管理
+│   ├── check-deps.py         # 依赖检查
+│   ├── export-printable.py   # 导出复习 PDF
+│   ├── update-review.py      # 更新复习进度
+│   ├── generate-practice.py  # 举一反三练习生成（17 个知识点模板）
+│   # 分析报表
+│   ├── weak-points.py        # 薄弱知识点分析
+│   ├── monthly-report.py     # 月度报告
+│   ├── analyze.py            # 综合分析
+│   # 提醒
+│   ├── daily-review-reminder.py  # 每日复习提醒
+│   ├── review-reminder.py        # 复习提醒
+│   # Wiki 模式
+│   ├── create-concept.py    # 创建知识点页面
+│   ├── lint-wiki.py         # 知识库健康检查
+│   ├── verify-links.py      # 验证链接有效性
+│   └── migrate-to-wiki.py   # 🆕 批量迁移到 Wiki
 └── trigger-optimization/  # 触发词优化配置
 ```
 

@@ -11,6 +11,7 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 
 优先在这些场景使用本 skill：
 
+- **第一次使用**：运行 `init-student.py` 创建学生档案
 - 录入或整理错题到 Obsidian 或 `data/mistake-notebook/`
 - 补全或解释 `type: mistake-record` 的 YAML/frontmatter
 - 查询“今天有什么要复习的”或“今天的复习提醒”
@@ -18,7 +19,7 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 - 用户说“复习完了”，需要自动更新复习进度
 - 生成举一反三、薄弱点分析、分析报告、月报
 - 配置每日提醒、飞书/微信渠道、`crontab`
-- 第一次使用，需要检查依赖或环境
+- 检查依赖或环境
 
 不要在这些场景使用本 skill：
 
@@ -41,15 +42,23 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 
 ## Workflow
 
-### 1. 环境检查
+### 1. 第一次使用：初始化学生档案
 
-当用户第一次使用，或提到依赖、安装失败、PDF 导出失败时：
+当用户第一次使用或提到"新建学生"、"创建档案"时：
+
+1. 推荐运行 `init-student.py`（交互式）
+2. 或非交互模式：`init-student.py --name "张三" --grade "八年级" --non-interactive`
+3. 说明档案位置和下一步操作
+
+### 2. 环境检查
+
+当用户提到依赖、安装失败、PDF 导出失败时：
 
 1. 先运行 `check-deps.py`
 2. 缺依赖时再给安装命令
 3. 详细安装说明读 `docs/requirements.md`
 
-### 2. 录入错题
+### 3. 录入错题
 
 当用户提供照片、截图、题目文本，或要求“录入错题”“整理错题本”时：
 
@@ -66,7 +75,7 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 - `resources/error-types.md`
 - `resources/curriculum/` 下对应学科文件
 
-### 3. 查询待复习内容
+### 4. 查询待复习内容
 
 当用户说“今天有什么要复习的”“今天的复习提醒”时：
 
@@ -80,7 +89,7 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 - `docs/auto-review-update.md`
 - `docs/review-update-guide.md`
 
-### 4. 发送复习内容
+### 5. 发送复习内容
 
 当用户明确要求发送某科或全部复习内容时：
 
@@ -92,7 +101,7 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 
 更多例子读 `examples.md`。
 
-### 5. 更新复习进度
+### 6. 更新复习进度
 
 当用户说“复习完了”“今天的错题复习完了”“物理复习完了”时：
 
@@ -108,7 +117,7 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 - `docs/auto-review-update.md`
 - `docs/review-update-guide.md`
 
-### 6. 举一反三 / 分析 / 报告
+### 7. 举一反三 / 分析 / 报告
 
 当用户要生成变式题、薄弱点分析、分析报告、月报时，优先使用：
 
@@ -117,12 +126,23 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 - `analyze.py`
 - `monthly-report.py`
 
+**支持的知识点的（2026-04-12 更新）**：
+
+| 学科 | 知识点 |
+|------|--------|
+| 物理 | 力的合成、牛顿第一定律、欧姆定律、浮力、压强、杠杆、电功率 |
+| 数学 | 一元一次方程、二次函数、勾股定理、三角形全等、平行四边形 |
+| 英语 | 现在完成时、一般过去时、定语从句、被动语态 |
+| 化学 | 化学方程式 |
+
+> 支持知识点别名（如"欧姆"= "欧姆定律"，"完成时"= "现在完成时"）。若知识点无模板，返回通用练习题。
+
 相关参考：
 
 - `resources/similar-problems-template.md`
 - `resources/error-types.md`
 
-### 7. 定时提醒 / 飞书 / 微信
+### 8. 定时提醒 / 飞书 / 微信
 
 当用户要“每天 18:00 自动提醒”“给飞书发今日复习提醒”时：
 
