@@ -5,8 +5,36 @@
 """
 
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Callable
+from threading import Lock
+
+
+# 全局目录缓存 - 缓存学生目录结构，避免重复扫描
+_directory_cache: Dict[str, List[Path]] = {}
+_cache_lock = Lock()
+
+
+def clear_directory_cache(student_dir: Optional[Path] = None) -> None:
+    """
+    清除目录缓存
+    
+    Args:
+        student_dir: 指定要清除的学生目录，None 则清除所有缓存
+    """
+    with _cache_lock:
+        if student_dir is None:
+            _directory_cache.clear()
+        else:
+            key = str(student_dir.resolve())
+            if key in _directory_cache:
+                del _directory_cache[key]
+
+
+def get_directory_cache_key(student_dir: Path) -> str:
+    """获取目录缓存键"""
+    return str(student_dir.resolve())
 
 
 def parse_frontmatter(content: str) -> Dict[str, Any]:
@@ -72,10 +100,121 @@ def write_frontmatter(content: str, metadata: Dict[str, Any]) -> str:
         return fm_block + content
 
 
+def _scan_mistake_file(
+    mistake_file: Path,
+    subject: Optional[str] = None,
+    knowledge_point: Optional[str] = None,
+    **filters: Any
+) -> Optional[Path]:
+    """
+    扫描单个错题文件（用于并行处理）
+    
+    Args:
+        mistake_file: 错题文件路径
+        subject: 按学科筛选
+        knowledge_point: 按知识点筛选
+        **filters: 其他筛选条件
+        
+    Returns:
+        符合条件的文件路径，不符合返回 None
+    """
+    try:
+        content = mistake_file.read_text(encoding="utf-8")
+        fm = parse_frontmatter(content)
+        
+        # 学科筛选
+        if subject and fm.get("subject") != subject:
+            return None
+        
+        # 知识点筛选
+        if knowledge_point and fm.get("knowledge-point") != knowledge_point:
+            return None
+        
+        # 其他筛选条件（预留扩展）
+        # TODO: 实现更多筛选逻辑
+        
+        return mistake_file
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def find_mistake_files_parallel(
+    student_dir: Path,
+    subject: Optional[str] = None,
+    knowledge_point: Optional[str] = None,
+    max_workers: int = 8,
+    use_cache: bool = True,
+    **filters: Any
+) -> List[Path]:
+    """
+    并行查找符合条件的错题文件（使用多线程加速）
+    
+    Args:
+        student_dir: 学生目录路径
+        subject: 按学科筛选（可选）
+        knowledge_point: 按知识点筛选（可选）
+        max_workers: 最大工作线程数（默认：8）
+        use_cache: 是否使用目录缓存（默认：True）
+        **filters: 其他筛选条件
+        
+    Returns:
+        符合条件的文件路径列表
+        
+    Examples:
+        >>> # 并行查找所有错题文件
+        >>> files = find_mistake_files_parallel(Path("data/students/张三"))
+        >>> # 按学科筛选
+        >>> math_files = find_mistake_files_parallel(Path("data/students/张三"), subject="math")
+    """
+    mistakes_dir = student_dir / "mistakes"
+    if not mistakes_dir.exists():
+        return []
+    
+    # 使用缓存或扫描目录
+    cache_key = get_directory_cache_key(student_dir)
+    
+    if use_cache:
+        with _cache_lock:
+            if cache_key in _directory_cache:
+                mistake_files = _directory_cache[cache_key]
+            else:
+                mistake_files = list(mistakes_dir.rglob("mistake.md"))
+                _directory_cache[cache_key] = mistake_files
+    else:
+        mistake_files = list(mistakes_dir.rglob("mistake.md"))
+    
+    if not mistake_files:
+        return []
+    
+    # 并行处理文件
+    result: List[Path] = []
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # 提交所有任务
+        future_to_file = {
+            executor.submit(
+                _scan_mistake_file,
+                f,
+                subject,
+                knowledge_point,
+                **filters
+            ): f for f in mistake_files
+        }
+        
+        # 收集结果
+        for future in as_completed(future_to_file):
+            file_path = future.result()
+            if file_path is not None:
+                result.append(file_path)
+    
+    return result
+
+
 def find_mistake_files(
     student_dir: Path,
     subject: Optional[str] = None,
     knowledge_point: Optional[str] = None,
+    use_cache: bool = True,
     **filters: Any
 ) -> List[Path]:
     """
@@ -85,6 +224,7 @@ def find_mistake_files(
         student_dir: 学生目录路径
         subject: 按学科筛选（可选）
         knowledge_point: 按知识点筛选（可选）
+        use_cache: 是否使用目录缓存（默认：True）
         **filters: 其他筛选条件（暂未实现）
         
     Returns:
@@ -100,9 +240,25 @@ def find_mistake_files(
     if not mistakes_dir.exists():
         return []
     
+    # 使用缓存或扫描目录
+    cache_key = get_directory_cache_key(student_dir)
+    
+    if use_cache:
+        with _cache_lock:
+            if cache_key in _directory_cache:
+                mistake_files = _directory_cache[cache_key]
+            else:
+                mistake_files = list(mistakes_dir.rglob("mistake.md"))
+                _directory_cache[cache_key] = mistake_files
+    else:
+        mistake_files = list(mistakes_dir.rglob("mistake.md"))
+    
+    if not mistake_files:
+        return []
+    
     result: List[Path] = []
     
-    for mistake_file in mistakes_dir.rglob("mistake.md"):
+    for mistake_file in mistake_files:
         try:
             content = mistake_file.read_text(encoding="utf-8")
             fm = parse_frontmatter(content)

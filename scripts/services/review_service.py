@@ -6,12 +6,20 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict, Tuple
 
-from scripts.core.file_ops import find_mistake_files, get_student_dir, read_mistake_file, write_mistake_file
+from scripts.core.file_ops import (
+    find_mistake_files,
+    find_mistake_files_parallel,
+    get_student_dir,
+    read_mistake_file,
+    write_mistake_file,
+    clear_directory_cache,
+)
 from scripts.core.models import Mistake, Subject, ErrorType, Confidence
 from scripts.core.srs import calculate_next_due, is_due_today, ReviewSchedule
 
@@ -118,16 +126,111 @@ class ReviewService:
         student_dir: 学生目录路径
     """
     
-    def __init__(self, student_name: str, base_dir: Optional[Path] = None):
+    def __init__(
+        self,
+        student_name: str,
+        base_dir: Optional[Path] = None,
+        use_parallel: bool = True,
+        max_workers: int = 8,
+    ):
         """初始化复习服务
         
         Args:
             student_name: 学生姓名
             base_dir: 基础目录，默认为 data/mistake-notebook/students
+            use_parallel: 是否使用并行处理（默认：True）
+            max_workers: 并行处理的最大工作线程数（默认：8）
         """
         self.student_name = student_name
         self.base_dir = base_dir
         self.student_dir = get_student_dir(student_name, base_dir)
+        self.use_parallel = use_parallel
+        self.max_workers = max_workers
+        # 缓存已解析的错题，避免重复解析
+        self._mistake_cache: Dict[str, Tuple[Mistake, Path]] = {}
+    
+    def _parse_mistake_from_file_fast(
+        self,
+        file_path: Path,
+        target_date: date
+    ) -> Optional[Mistake]:
+        """
+        快速解析错题文件（仅解析到期检查所需字段）
+        
+        Args:
+            file_path: 错题文件路径
+            target_date: 目标日期（用于到期检查）
+        
+        Returns:
+            Mistake 对象，解析失败或不需要复习返回 None
+        """
+        try:
+            fm, body = read_mistake_file(file_path)
+            
+            # 解析必需字段
+            mistake_id = fm.get('id', '')
+            subject_str = fm.get('subject', '')
+            knowledge_point = fm.get('knowledge-point', '')
+            error_type_str = fm.get('error-type', '')
+            created_str = fm.get('created', '')
+            due_date_str = fm.get('due-date', '')
+            
+            if not all([mistake_id, subject_str, knowledge_point, error_type_str, created_str, due_date_str]):
+                return None
+            
+            # 快速检查：如果已完成，直接跳过
+            if due_date_str.lower() == 'completed':
+                return None
+            
+            # 转换枚举类型
+            try:
+                subject = Subject(subject_str)
+            except ValueError:
+                return None
+            
+            try:
+                error_type = ErrorType(error_type_str)
+            except ValueError:
+                return None
+            
+            # 解析日期
+            from datetime import datetime
+            try:
+                created = datetime.strptime(created_str, '%Y-%m-%d').date()
+                due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                return None
+            
+            # 快速检查：如果未到期，直接跳过
+            if not is_due_today(due_date, target_date):
+                return None
+            
+            # 解析可选字段
+            unit = fm.get('unit')
+            review_round = int(fm.get('review-round', 0) or 0)
+            confidence_str = fm.get('confidence', 'low')
+            
+            try:
+                confidence = Confidence(confidence_str)
+            except ValueError:
+                confidence = Confidence.LOW
+            
+            return Mistake(
+                id=mistake_id,
+                student=self.student_name,
+                subject=subject,
+                knowledge_point=knowledge_point,
+                unit=unit,
+                error_type=error_type,
+                created=created,
+                due_date=due_date,
+                review_round=review_round,
+                confidence=confidence,
+                question=body.strip() if body else '',
+                path=str(file_path),
+            )
+        except (OSError, UnicodeDecodeError, KeyError):
+            return None
     
     def _parse_mistake_from_file(self, file_path: Path) -> Optional[Mistake]:
         """从文件解析 Mistake 对象
@@ -239,10 +342,24 @@ class ReviewService:
         except (OSError, UnicodeDecodeError, FileNotFoundError):
             return False
     
+    def _parse_mistake_task(self, file_path: Path, target_date: date) -> Optional[Mistake]:
+        """
+        解析错题任务（用于并行处理）
+        
+        Args:
+            file_path: 错题文件路径
+            target_date: 目标日期
+        
+        Returns:
+            Mistake 对象或 None
+        """
+        return self._parse_mistake_from_file_fast(file_path, target_date)
+    
     def get_due_reviews(self, target_date: Optional[date] = None) -> List[Mistake]:
         """获取到期需要复习的错题列表
         
         返回所有到期日小于等于目标日期的未完成错题。
+        使用并行处理和目录缓存优化性能。
         
         Args:
             target_date: 目标日期，默认为今天
@@ -255,26 +372,80 @@ class ReviewService:
         
         due_mistakes: List[Mistake] = []
         
-        # 查找所有错题文件
-        mistake_files = find_mistake_files(self.student_dir)
-        
-        for file_path in mistake_files:
-            mistake = self._parse_mistake_from_file(file_path)
-            if mistake is None:
-                continue
+        # 使用并行或串行查找
+        if self.use_parallel:
+            # 并行查找和解析
+            mistake_files = find_mistake_files_parallel(
+                self.student_dir,
+                max_workers=self.max_workers,
+                use_cache=True,
+            )
             
-            # 跳过已完成的错题
-            if mistake.is_completed():
-                continue
+            # 并行解析错题
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                # 提交所有任务
+                future_to_file = {
+                    executor.submit(self._parse_mistake_task, f, target_date): f
+                    for f in mistake_files
+                }
+                
+                # 收集结果
+                for future in as_completed(future_to_file):
+                    mistake = future.result()
+                    if mistake is not None:
+                        due_mistakes.append(mistake)
+        else:
+            # 串行查找和解析（向后兼容）
+            mistake_files = find_mistake_files(self.student_dir, use_cache=True)
             
-            # 检查是否到期
-            if is_due_today(mistake.due_date, target_date):
-                due_mistakes.append(mistake)
+            for file_path in mistake_files:
+                mistake = self._parse_mistake_from_file_fast(file_path, target_date)
+                if mistake is not None:
+                    due_mistakes.append(mistake)
         
         # 按到期日排序（最紧急的在前）
         due_mistakes.sort(key=lambda m: m.due_date)
         
         return due_mistakes
+    
+    def _find_mistake_file_by_id(self, mistake_id: str) -> Optional[Path]:
+        """
+        根据 ID 查找错题文件（使用缓存加速）
+        
+        Args:
+            mistake_id: 错题 ID
+        
+        Returns:
+            错题文件路径，未找到返回 None
+        """
+        # 先检查缓存
+        if mistake_id in self._mistake_cache:
+            _, file_path = self._mistake_cache[mistake_id]
+            if file_path.exists():
+                return file_path
+            else:
+                # 文件已删除，清除缓存
+                del self._mistake_cache[mistake_id]
+        
+        # 使用并行查找
+        if self.use_parallel:
+            mistake_files = find_mistake_files_parallel(
+                self.student_dir,
+                max_workers=self.max_workers,
+                use_cache=True,
+            )
+        else:
+            mistake_files = find_mistake_files(self.student_dir, use_cache=True)
+        
+        for file_path in mistake_files:
+            try:
+                fm, _ = read_mistake_file(file_path)
+                if fm.get('id') == mistake_id:
+                    return file_path
+            except (OSError, UnicodeDecodeError):
+                continue
+        
+        return None
     
     def update_review(self, mistake_id: str, result: str = 'pass', confidence: Optional[str] = None) -> ReviewResult:
         """更新单次复习结果
@@ -289,18 +460,8 @@ class ReviewService:
         Returns:
             ReviewResult 对象，包含更新结果详情
         """
-        # 查找错题文件
-        mistake_files = find_mistake_files(self.student_dir)
-        target_file = None
-        
-        for file_path in mistake_files:
-            try:
-                fm, _ = read_mistake_file(file_path)
-                if fm.get('id') == mistake_id:
-                    target_file = file_path
-                    break
-            except (OSError, UnicodeDecodeError):
-                continue
+        # 查找错题文件（使用缓存）
+        target_file = self._find_mistake_file_by_id(mistake_id)
         
         if target_file is None:
             return ReviewResult(
@@ -368,6 +529,9 @@ class ReviewService:
                 error='写入文件失败'
             )
         
+        # 更新缓存
+        self._mistake_cache[mistake_id] = (mistake, target_file)
+        
         return ReviewResult(
             mistake_id=mistake_id,
             success=True,
@@ -402,6 +566,47 @@ class ReviewService:
         
         return batch_result
     
+    def _parse_all_mistakes(self) -> List[Mistake]:
+        """
+        解析所有错题（使用并行处理和缓存）
+        
+        Returns:
+            所有错题的 Mistake 对象列表
+        """
+        mistakes: List[Mistake] = []
+        
+        if self.use_parallel:
+            # 并行查找
+            mistake_files = find_mistake_files_parallel(
+                self.student_dir,
+                max_workers=self.max_workers,
+                use_cache=True,
+            )
+            
+            # 并行解析
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                def parse_file(fp: Path) -> Optional[Mistake]:
+                    return self._parse_mistake_from_file(fp)
+                
+                future_to_file = {
+                    executor.submit(parse_file, f): f
+                    for f in mistake_files
+                }
+                
+                for future in as_completed(future_to_file):
+                    mistake = future.result()
+                    if mistake is not None:
+                        mistakes.append(mistake)
+        else:
+            # 串行处理
+            mistake_files = find_mistake_files(self.student_dir, use_cache=True)
+            for file_path in mistake_files:
+                mistake = self._parse_mistake_from_file(file_path)
+                if mistake is not None:
+                    mistakes.append(mistake)
+        
+        return mistakes
+    
     def get_review_stats(self, period: str = 'week') -> ReviewStats:
         """获取复习统计信息
         
@@ -413,19 +618,15 @@ class ReviewService:
         """
         stats = ReviewStats()
         
-        # 查找所有错题文件
-        mistake_files = find_mistake_files(self.student_dir)
+        # 使用并行解析所有错题
+        all_mistakes = self._parse_all_mistakes()
         
         today = date.today()
         stats.by_subject = {}
         stats.by_error_type = {}
         total_rounds = 0
         
-        for file_path in mistake_files:
-            mistake = self._parse_mistake_from_file(file_path)
-            if mistake is None:
-                continue
-            
+        for mistake in all_mistakes:
             stats.total_mistakes += 1
             total_rounds += mistake.review_round
             
@@ -511,16 +712,13 @@ class ReviewService:
         
         history: List[ReviewHistoryEntry] = []
         
-        # 查找所有错题文件
-        mistake_files = find_mistake_files(self.student_dir)
+        # 使用并行解析所有错题
+        all_mistakes = self._parse_all_mistakes()
         
-        for file_path in mistake_files:
-            mistake = self._parse_mistake_from_file(file_path)
-            if mistake is None:
-                continue
-            
+        from scripts.core.srs import DEFAULT_REVIEW_INTERVALS
+        
+        for mistake in all_mistakes:
             # 根据 review-round 和 created 推断复习历史
-            # 假设每轮复习都产生了记录
             review_round = mistake.review_round
             
             # 如果是已完成的，使用 due_date 作为最后复习日期
@@ -538,9 +736,6 @@ class ReviewService:
                 # 未完成：根据 review_round 推断历史复习
                 if review_round > 0:
                     # 有复习历史，根据轮次推算复习日期
-                    # 简化处理：使用 created + 轮次 * 平均间隔 估算
-                    from scripts.core.srs import DEFAULT_REVIEW_INTERVALS
-                    
                     review_dates = []
                     current_date = mistake.created
                     
