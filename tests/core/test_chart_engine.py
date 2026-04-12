@@ -1,13 +1,14 @@
 """
 ChartEngine 单元测试。
 
-测试图表引擎的核心功能，包括初始化、饼图、柱状图、折线图生成
+测试图表引擎的核心功能，包括初始化、饼图、柱状图、折线图、热力图生成
 以及 PNG 文件导出验证。
 """
 
 from __future__ import annotations
 
 import tempfile
+from datetime import date
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -206,3 +207,108 @@ class TestSaveAsPng:
         result_path = engine.save_as_png(fig, output_path)
 
         assert result_path.is_absolute()
+
+
+class TestCalendarHeatmap:
+    """测试日历热力图生成功能。"""
+
+    def test_calendar_heatmap_basic(self, tmp_path: Path) -> None:
+        """测试基本日历热力图生成。"""
+        engine = ChartEngine(output_dir=tmp_path)
+        data = [
+            {"date": "2026-04-01", "value": 5, "subject": "math"},
+            {"date": "2026-04-02", "value": 3, "subject": "chinese"},
+            {"date": "2026-04-03", "value": 7, "subject": "math"},
+            {"date": "2026-04-05", "value": 2, "subject": "english"},
+        ]
+        output_path = tmp_path / "heatmap_test.png"
+
+        result_path = engine.calendar_heatmap(
+            data=data, title="复习热力图", output_path=output_path
+        )
+
+        assert result_path.exists()
+        assert result_path.is_file()
+        assert result_path.suffix.lower() == ".png"
+        assert result_path.stat().st_size > 0
+
+    def test_calendar_heatmap_empty_data(self, tmp_path: Path) -> None:
+        """测试空数据热力图。"""
+        engine = ChartEngine(output_dir=tmp_path)
+        data: List[Dict[str, any]] = []
+        output_path = tmp_path / "heatmap_empty.png"
+
+        result_path = engine.calendar_heatmap(
+            data=data, title="空数据", output_path=output_path
+        )
+
+        assert result_path.exists()
+        assert result_path.stat().st_size > 0
+
+    def test_calendar_heatmap_year_filter(self, tmp_path: Path) -> None:
+        """测试年份过滤。"""
+        engine = ChartEngine(output_dir=tmp_path)
+        data = [
+            {"date": "2025-04-01", "value": 5, "subject": "math"},
+            {"date": "2026-04-02", "value": 3, "subject": "chinese"},
+            {"date": "2026-04-03", "value": 7, "subject": "math"},
+        ]
+        output_path = tmp_path / "heatmap_year.png"
+
+        # 只保留 2026 年的数据
+        result_path = engine.calendar_heatmap(
+            data=data, title="2026 年热力图", output_path=output_path, year=2026
+        )
+
+        assert result_path.exists()
+        assert result_path.stat().st_size > 0
+
+    def test_calendar_heatmap_date_objects(self, tmp_path: Path) -> None:
+        """测试使用 date 对象作为日期。"""
+        engine = ChartEngine(output_dir=tmp_path)
+        data = [
+            {"date": date(2026, 4, 1), "value": 5, "subject": "math"},
+            {"date": date(2026, 4, 2), "value": 3, "subject": "chinese"},
+        ]
+        output_path = tmp_path / "heatmap_date_obj.png"
+
+        result_path = engine.calendar_heatmap(
+            data=data, title="日期对象测试", output_path=output_path
+        )
+
+        assert result_path.exists()
+        assert result_path.stat().st_size > 0
+
+    def test_calendar_heatmap_creates_parent_dirs(self, tmp_path: Path) -> None:
+        """测试热力图保存时自动创建父目录。"""
+        engine = ChartEngine(output_dir=tmp_path)
+        data = [
+            {"date": "2026-04-01", "value": 5, "subject": "math"},
+        ]
+        output_path = tmp_path / "subdir" / "nested" / "heatmap.png"
+
+        result_path = engine.calendar_heatmap(
+            data=data, title="嵌套目录", output_path=output_path
+        )
+
+        assert result_path.exists()
+        assert result_path.parent.exists()
+
+    def test_calendar_heatmap_multiple_subjects(self, tmp_path: Path) -> None:
+        """测试多学科热力图。"""
+        engine = ChartEngine(output_dir=tmp_path)
+        data = [
+            {"date": "2026-04-01", "value": 2, "subject": "math"},
+            {"date": "2026-04-01", "value": 3, "subject": "chinese"},
+            {"date": "2026-04-02", "value": 1, "subject": "english"},
+            {"date": "2026-04-02", "value": 4, "subject": "math"},
+            {"date": "2026-04-03", "value": 2, "subject": "chinese"},
+        ]
+        output_path = tmp_path / "heatmap_multi_subj.png"
+
+        result_path = engine.calendar_heatmap(
+            data=data, title="多学科热力图", output_path=output_path
+        )
+
+        assert result_path.exists()
+        assert result_path.stat().st_size > 0

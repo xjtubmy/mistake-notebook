@@ -481,15 +481,19 @@ class ReviewService:
         """
         today = date.today()
         
-        # 计算起始日期
+        # 计算起始日期和结束日期
         if period == 'week':
             start_date = today - timedelta(days=7)
+            end_date = today
         elif period == 'month':
             start_date = today - timedelta(days=30)
+            end_date = today
         elif period == 'year':
             start_date = today - timedelta(days=365)
+            end_date = today
         elif period == 'all':
             start_date = date(2000, 1, 1)  # 足够早的日期
+            end_date = today
         else:
             # 尝试解析 YYYY-MM 格式
             try:
@@ -504,9 +508,6 @@ class ReviewService:
                 # 无法解析，默认为 month
                 start_date = today - timedelta(days=30)
                 end_date = today
-        
-        if period not in ['week', 'month', 'year', 'all']:
-            end_date = today
         
         history: List[ReviewHistoryEntry] = []
         
@@ -538,14 +539,14 @@ class ReviewService:
                 if review_round > 0:
                     # 有复习历史，根据轮次推算复习日期
                     # 简化处理：使用 created + 轮次 * 平均间隔 估算
-                    from scripts.core.srs import SRS_INTERVALS
+                    from scripts.core.srs import DEFAULT_REVIEW_INTERVALS
                     
                     review_dates = []
                     current_date = mistake.created
                     
                     for round_num in range(1, review_round + 1):
-                        if round_num <= len(SRS_INTERVALS):
-                            interval = SRS_INTERVALS[round_num - 1]
+                        if round_num <= len(DEFAULT_REVIEW_INTERVALS):
+                            interval = DEFAULT_REVIEW_INTERVALS[round_num - 1]
                         else:
                             interval = 30  # 默认间隔
                         

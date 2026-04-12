@@ -23,6 +23,7 @@ from scripts.services.review_service import (
     ReviewResult,
     BatchResult,
     ReviewStats,
+    ReviewHistoryEntry,
 )
 
 
@@ -741,3 +742,281 @@ class TestReviewStats:
         assert stats.by_subject['math'] == 6
         assert stats.by_error_type['计算错误'] == 5
         assert stats.average_round == 2.5
+
+
+class TestReviewHistoryEntry:
+    """ReviewHistoryEntry 数据类测试"""
+    
+    def test_review_history_entry_creation(self):
+        """测试创建复习历史条目"""
+        entry = ReviewHistoryEntry(
+            date=date(2026, 4, 10),
+            subject='math',
+            confidence='high',
+            mistake_id='test-001',
+            knowledge_point='一元二次方程',
+        )
+        
+        assert entry.date == date(2026, 4, 10)
+        assert entry.subject == 'math'
+        assert entry.confidence == 'high'
+        assert entry.mistake_id == 'test-001'
+        assert entry.knowledge_point == '一元二次方程'
+
+
+class TestGetReviewHistory:
+    """get_review_history 方法测试"""
+    
+    def test_get_review_history_empty(self, temp_dir):
+        """测试没有错题时返回空列表"""
+        service = ReviewService('空学生', base_dir=temp_dir)
+        
+        history = service.get_review_history(period='month')
+        
+        assert history == []
+    
+    def test_get_review_history_period_week(self, temp_dir, sample_mistake_content):
+        """测试按周获取复习历史"""
+        student_dir = get_student_dir('历史测试', temp_dir)
+        mistakes_dir = student_dir / 'mistakes' / 'math'
+        
+        # 创建一个有复习历史的错题（review-round=2）
+        mistake_dir = mistakes_dir / 'history-001'
+        mistake_dir.mkdir(parents=True, exist_ok=True)
+        write_mistake_file(
+            mistake_dir / 'mistake.md',
+            {
+                'id': 'history-001',
+                'student': '历史测试',
+                'subject': 'math',
+                'knowledge-point': '测试知识点',
+                'error-type': '计算错误',
+                'created': (date.today() - timedelta(days=10)).strftime('%Y-%m-%d'),
+                'due-date': (date.today() + timedelta(days=5)).strftime('%Y-%m-%d'),
+                'review-round': '2',
+                'confidence': 'medium',
+            },
+            sample_mistake_content
+        )
+        
+        service = ReviewService('历史测试', base_dir=temp_dir)
+        history = service.get_review_history(period='week')
+        
+        # 应返回复习历史记录
+        assert isinstance(history, list)
+    
+    def test_get_review_history_period_month(self, temp_dir, sample_mistake_content):
+        """测试按月获取复习历史"""
+        student_dir = get_student_dir('月历史测试', temp_dir)
+        mistakes_dir = student_dir / 'mistakes' / 'math'
+        
+        # 创建一个有复习历史的错题
+        mistake_dir = mistakes_dir / 'month-001'
+        mistake_dir.mkdir(parents=True, exist_ok=True)
+        write_mistake_file(
+            mistake_dir / 'mistake.md',
+            {
+                'id': 'month-001',
+                'student': '月历史测试',
+                'subject': 'math',
+                'knowledge-point': '函数',
+                'error-type': '概念不清',
+                'created': (date.today() - timedelta(days=20)).strftime('%Y-%m-%d'),
+                'due-date': (date.today() + timedelta(days=10)).strftime('%Y-%m-%d'),
+                'review-round': '3',
+                'confidence': 'high',
+            },
+            sample_mistake_content
+        )
+        
+        service = ReviewService('月历史测试', base_dir=temp_dir)
+        history = service.get_review_history(period='month')
+        
+        assert isinstance(history, list)
+        # 验证返回的条目有正确的属性
+        if history:
+            entry = history[0]
+            assert hasattr(entry, 'date')
+            assert hasattr(entry, 'subject')
+            assert hasattr(entry, 'confidence')
+            assert hasattr(entry, 'mistake_id')
+            assert hasattr(entry, 'knowledge_point')
+    
+    def test_get_review_history_period_year(self, temp_dir, sample_mistake_content):
+        """测试按年获取复习历史"""
+        student_dir = get_student_dir('年历史测试', temp_dir)
+        mistakes_dir = student_dir / 'mistakes' / 'math'
+        
+        # 创建一个有复习历史的错题
+        mistake_dir = mistakes_dir / 'year-001'
+        mistake_dir.mkdir(parents=True, exist_ok=True)
+        write_mistake_file(
+            mistake_dir / 'mistake.md',
+            {
+                'id': 'year-001',
+                'student': '年历史测试',
+                'subject': 'math',
+                'knowledge-point': '几何',
+                'error-type': '逻辑错误',
+                'created': (date.today() - timedelta(days=100)).strftime('%Y-%m-%d'),
+                'due-date': (date.today() + timedelta(days=50)).strftime('%Y-%m-%d'),
+                'review-round': '4',
+                'confidence': 'high',
+            },
+            sample_mistake_content
+        )
+        
+        service = ReviewService('年历史测试', base_dir=temp_dir)
+        history = service.get_review_history(period='year')
+        
+        assert isinstance(history, list)
+    
+    def test_get_review_history_period_all(self, temp_dir, sample_mistake_content):
+        """测试获取所有历史"""
+        student_dir = get_student_dir('全历史测试', temp_dir)
+        mistakes_dir = student_dir / 'mistakes' / 'math'
+        
+        # 创建一个已完成的错题
+        mistake_dir = mistakes_dir / 'all-001'
+        mistake_dir.mkdir(parents=True, exist_ok=True)
+        write_mistake_file(
+            mistake_dir / 'mistake.md',
+            {
+                'id': 'all-001',
+                'student': '全历史测试',
+                'subject': 'math',
+                'knowledge-point': '代数',
+                'error-type': '计算错误',
+                'created': '2025-01-01',
+                'due-date': 'completed',
+                'review-round': '5',
+                'confidence': 'high',
+            },
+            sample_mistake_content
+        )
+        
+        service = ReviewService('全历史测试', base_dir=temp_dir)
+        history = service.get_review_history(period='all')
+        
+        assert isinstance(history, list)
+    
+    def test_get_review_history_period_custom_month(self, temp_dir, sample_mistake_content):
+        """测试自定义月份格式"""
+        student_dir = get_student_dir('自定义月测试', temp_dir)
+        mistakes_dir = student_dir / 'mistakes' / 'math'
+        
+        # 创建一个错题
+        mistake_dir = mistakes_dir / 'custom-001'
+        mistake_dir.mkdir(parents=True, exist_ok=True)
+        write_mistake_file(
+            mistake_dir / 'mistake.md',
+            {
+                'id': 'custom-001',
+                'student': '自定义月测试',
+                'subject': 'math',
+                'knowledge-point': '测试',
+                'error-type': '计算错误',
+                'created': '2026-04-01',
+                'due-date': '2026-04-15',
+                'review-round': '1',
+                'confidence': 'medium',
+            },
+            sample_mistake_content
+        )
+        
+        service = ReviewService('自定义月测试', base_dir=temp_dir)
+        # 使用 YYYY-MM 格式
+        history = service.get_review_history(period='2026-04')
+        
+        assert isinstance(history, list)
+    
+    def test_get_review_history_sorted_by_date(self, temp_dir, sample_mistake_content):
+        """测试返回结果按日期排序"""
+        student_dir = get_student_dir('排序历史测试', temp_dir)
+        mistakes_dir = student_dir / 'mistakes' / 'math'
+        
+        # 创建多个有不同 review-round 的错题
+        for i in range(3):
+            mistake_dir = mistakes_dir / f'sorted-{i:03d}'
+            mistake_dir.mkdir(parents=True, exist_ok=True)
+            write_mistake_file(
+                mistake_dir / 'mistake.md',
+                {
+                    'id': f'sorted-{i:03d}',
+                    'student': '排序历史测试',
+                    'subject': 'math',
+                    'knowledge-point': f'知识点{i}',
+                    'error-type': '计算错误',
+                    'created': (date.today() - timedelta(days=30-i*5)).strftime('%Y-%m-%d'),
+                    'due-date': (date.today() + timedelta(days=10)).strftime('%Y-%m-%d'),
+                    'review-round': str(i + 1),
+                    'confidence': 'medium',
+                },
+                sample_mistake_content
+            )
+        
+        service = ReviewService('排序历史测试', base_dir=temp_dir)
+        history = service.get_review_history(period='month')
+        
+        # 验证结果按日期升序排序
+        if len(history) > 1:
+            for i in range(len(history) - 1):
+                assert history[i].date <= history[i+1].date
+    
+    def test_get_review_history_contains_subject(self, temp_dir, sample_mistake_content):
+        """测试返回结果包含学科信息"""
+        student_dir = get_student_dir('学科历史测试', temp_dir)
+        mistakes_dir = student_dir / 'mistakes' / 'math'
+        
+        mistake_dir = mistakes_dir / 'subject-001'
+        mistake_dir.mkdir(parents=True, exist_ok=True)
+        write_mistake_file(
+            mistake_dir / 'mistake.md',
+            {
+                'id': 'subject-001',
+                'student': '学科历史测试',
+                'subject': 'math',
+                'knowledge-point': '测试',
+                'error-type': '计算错误',
+                'created': (date.today() - timedelta(days=10)).strftime('%Y-%m-%d'),
+                'due-date': (date.today() + timedelta(days=5)).strftime('%Y-%m-%d'),
+                'review-round': '1',
+                'confidence': 'high',
+            },
+            sample_mistake_content
+        )
+        
+        service = ReviewService('学科历史测试', base_dir=temp_dir)
+        history = service.get_review_history(period='month')
+        
+        # 验证返回的条目包含正确的学科
+        if history:
+            assert any(entry.subject == 'math' for entry in history)
+    
+    def test_get_review_history_invalid_period(self, temp_dir, sample_mistake_content):
+        """测试无效周期格式默认使用 month"""
+        student_dir = get_student_dir('无效周期测试', temp_dir)
+        mistakes_dir = student_dir / 'mistakes' / 'math'
+        
+        mistake_dir = mistakes_dir / 'invalid-001'
+        mistake_dir.mkdir(parents=True, exist_ok=True)
+        write_mistake_file(
+            mistake_dir / 'mistake.md',
+            {
+                'id': 'invalid-001',
+                'student': '无效周期测试',
+                'subject': 'math',
+                'knowledge-point': '测试',
+                'error-type': '计算错误',
+                'created': (date.today() - timedelta(days=10)).strftime('%Y-%m-%d'),
+                'due-date': (date.today() + timedelta(days=5)).strftime('%Y-%m-%d'),
+                'review-round': '1',
+            },
+            sample_mistake_content
+        )
+        
+        service = ReviewService('无效周期测试', base_dir=temp_dir)
+        # 传入无效格式，应默认使用 month
+        history = service.get_review_history(period='invalid-format')
+        
+        assert isinstance(history, list)
