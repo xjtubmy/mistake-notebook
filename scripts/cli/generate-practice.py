@@ -18,12 +18,15 @@ import random
 from pathlib import Path
 from datetime import datetime
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-if str(_SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(_SCRIPT_DIR))
+# 添加项目根目录到路径以支持 scripts 模块导入
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
-import output_naming as out_names
-import pdf_export
+from scripts import output_naming as out_names
+from scripts.core.pdf_engine import PDFEngine
+
+_pdf_engine = PDFEngine()
 
 
 # 知识点→练习模板映射
@@ -843,10 +846,10 @@ def main():
         out_names.print_output_path(md_p)
     else:
         out_names.print_output_path(md_p, "OUTPUT_PATH_MD")
-        pdf_path = str(md_p.with_suffix(".pdf"))
+        pdf_path = md_p.with_suffix(".pdf")
         try:
-            html = pdf_export.printable_html_from_markdown(content)
-            pdf_export.html_to_pdf(html, pdf_path)
+            html = _pdf_engine.printable_html_from_markdown(content)
+            _pdf_engine.html_to_pdf(html, pdf_path)
         except Exception as e:
             print(f"⚠️ PDF 未生成（已保留 Markdown）: {e}")
             out_names.print_output_path(md_p)

@@ -29,13 +29,14 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from collections import defaultdict
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-if str(_SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(_SCRIPT_DIR))
+# 添加项目根目录到路径以支持 scripts 模块导入
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
-import mistake_srs as srs
+from scripts.core import srs
 
-REVIEW_INTERVALS = srs.REVIEW_INTERVALS
+REVIEW_INTERVALS = srs.DEFAULT_REVIEW_INTERVALS
 
 
 def find_mistake_file(student: str, mistake_id: str) -> Path:

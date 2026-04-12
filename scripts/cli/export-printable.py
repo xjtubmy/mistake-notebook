@@ -24,12 +24,16 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-if str(_SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(_SCRIPT_DIR))
+# 添加项目根目录到路径以支持 scripts 模块导入
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
-import output_naming as out_names  # noqa: E402
-import pdf_export  # noqa: E402
+from scripts import output_naming as out_names  # noqa: E402
+from scripts.core.pdf_engine import PDFEngine  # noqa: E402
+
+# 创建 PDF 引擎实例
+_pdf_engine = PDFEngine()
 
 
 def load_mistakes(student: str, subject: str = None, unit: str = None) -> list:
@@ -275,8 +279,8 @@ def main():
     md_content = generate_printable_md(mistakes, args.student, args.subject)
     
     if args.format == 'pdf':
-        styled_html = pdf_export.printable_html_from_markdown(md_content)
-        pdf_export.html_to_pdf(styled_html, output_path)
+        styled_html = _pdf_engine.printable_html_from_markdown(md_content)
+        _pdf_engine.html_to_pdf(styled_html, Path(output_path))
     else:
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)

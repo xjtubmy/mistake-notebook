@@ -18,11 +18,12 @@ from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-if str(_SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(_SCRIPT_DIR))
+# 添加项目根目录到路径以支持 scripts 模块导入
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
-import output_naming as out_names
+from scripts import output_naming as out_names
 
 
 def analyze_weak_points(student: str, top_n: int = 5) -> dict:
