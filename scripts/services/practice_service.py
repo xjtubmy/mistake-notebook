@@ -848,7 +848,7 @@ class PracticeService:
         
         # 根据风格确定难度：基础=1-2，变式=3，提升=4-5
         difficulty_map = {'基础': random.randint(1, 2), '变式': 3, '提升': random.randint(4, 5), 'mixed': 3}
-        difficulty = template.get('difficulty', difficulty_map.get(style, 3))
+        difficulty: int = template.get('difficulty', difficulty_map.get(style, 3))  # type: ignore
         
         # 计算题目 hash（基于题目内容）
         item_hash = hashlib.md5(f"{question}|{answer}|{parse}".encode('utf-8')).hexdigest()[:12]
