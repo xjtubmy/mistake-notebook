@@ -119,6 +119,11 @@ class PDFEngine:
         将 HTML 内容转换为 PDF 文件。
 
         使用 Playwright 的 Chromium 浏览器渲染 HTML，并导出为 A4 格式的 PDF。
+        
+        优化项：
+        - 禁用 GPU、沙箱以提升性能
+        - 使用 networkidle 确保资源加载完成
+        - 禁用不必要的浏览器功能
 
         Args:
             html: HTML 文档字符串。
@@ -127,14 +132,34 @@ class PDFEngine:
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         with sync_playwright() as p:
-            browser = p.chromium.launch()
-            page = browser.new_page()
-            page.set_content(html, wait_until="networkidle")
+            # 优化：禁用 GPU、沙箱，使用 headless 模式提升性能
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    "--disable-gpu",
+                    "--disable-dev-shm-usage",
+                    "--disable-setuid-sandbox",
+                    "--no-sandbox",
+                    "--disable-web-security",
+                    "--disable-features=VizDisplayCompositor",
+                ]
+            )
+            # 优化：创建页面时禁用不必要的功能
+            page = browser.new_page(
+                viewport={"width": 1200, "height": 800},
+                device_scale_factor=1,
+                is_mobile=False,
+                has_touch=False,
+            )
+            # 优化：禁用图片、字体加载以加速（如果不需要）
+            # 但这里我们需要渲染完整内容，所以保持默认
+            page.set_content(html, wait_until="networkidle", timeout=30000)
             page.pdf(
                 path=output_path,
                 format="A4",
                 print_background=True,
                 margin={"top": "2cm", "bottom": "2cm", "left": "2cm", "right": "2cm"},
+                prefer_css_page_size=True,
             )
             browser.close()
 

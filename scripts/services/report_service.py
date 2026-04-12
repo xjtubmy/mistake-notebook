@@ -9,14 +9,16 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from scripts.core.file_ops import find_mistake_files, get_student_dir, parse_frontmatter
 from scripts.core import srs
 from scripts.core.chart_engine import ChartEngine
+from scripts.services.review_service import ReviewService
 from scripts import output_naming as out_names
 
 
@@ -136,6 +138,34 @@ class ReportService:
         self.student_name = student_name
         self.base_dir = base_dir
         self.student_dir = get_student_dir(student_name, base_dir)
+    
+    @staticmethod
+    def _generate_chart_parallel(
+        chart_engine: ChartEngine,
+        chart_func: Callable[..., Path],
+        data: Any,
+        title: str,
+        output_path: Path
+    ) -> Optional[Path]:
+        """
+        并行生成单个图表（用于 ThreadPoolExecutor）。
+        
+        Args:
+            chart_engine: 图表引擎实例
+            chart_func: 图表生成方法（bar_chart, pie_chart 等）
+            data: 图表数据
+            title: 图表标题
+            output_path: 输出路径
+        
+        Returns:
+            生成的图表路径，失败时返回 None
+        """
+        try:
+            result = chart_func(data=data, title=title, output_path=output_path)
+            return result if isinstance(result, Path) else None
+        except Exception as e:
+            print(f"⚠️ 图表生成失败 {output_path}: {e}")
+            return None
     
     def _load_all_mistakes(self, subject: Optional[str] = None) -> List[Dict[str, Any]]:
         """
@@ -332,9 +362,10 @@ generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
                 error_type_total[err_type] = error_type_total.get(err_type, 0) + count
         
         if error_type_total:
-            chart_engine = ChartEngine()
+            # 优化：启用缓存，指定输出目录
             chart_output_dir = output_path.parent if output_path else self.student_dir / "reports"
             chart_output_dir.mkdir(parents=True, exist_ok=True)
+            chart_engine = ChartEngine(output_dir=chart_output_dir, use_cache=True)
             chart_filename = f"error_type_bar_{self.student_name}.png"
             chart_path = chart_output_dir / chart_filename
             
@@ -635,9 +666,9 @@ generated: {now_str}
                     })
                 
                 # 生成热力图
-                chart_engine = ChartEngine()
                 chart_output_dir = output_path.parent if output_path else self.student_dir / "reports"
                 chart_output_dir.mkdir(parents=True, exist_ok=True)
+                chart_engine = ChartEngine(output_dir=chart_output_dir, use_cache=True)
                 heatmap_filename = f"review_heatmap_{year_month}_{self.student_name}.png"
                 heatmap_path = chart_output_dir / heatmap_filename
                 
@@ -765,9 +796,9 @@ generated: {now_str}
         # 生成学科分布饼图
         chart_path: Optional[Path] = None
         if by_subject and total > 0:
-            chart_engine = ChartEngine()
             chart_output_dir = output_path.parent if output_path else self.student_dir / "reports"
             chart_output_dir.mkdir(parents=True, exist_ok=True)
+            chart_engine = ChartEngine(output_dir=chart_output_dir, use_cache=True)
             chart_filename = f"subject_distribution_{self.student_name}.png"
             chart_path = chart_output_dir / chart_filename
             
