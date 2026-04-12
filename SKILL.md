@@ -1,5 +1,6 @@
 ---
 name: mistake-notebook
+version: 2.0.0
 description: "Use this skill for a student's 错题本 workflow in Obsidian or `data/mistake-notebook/`, especially when the user is recording wrong answers, managing spaced review, or asking what should be reviewed today. Trigger for: 录入或归档错题 from photos or text; filling or explaining `type: mistake-record` YAML/frontmatter; "今天有什么要复习的", "今天的复习提醒", or "复习完了"; exporting subject review PDFs; generating 举一反三 or 变式题; analyzing 薄弱知识点 or 月报; setting Feishu/WeChat daily reminders or `crontab`; and first-run checks with `check-deps`, `export-printable`, `generate-practice`, `weak-points`, `monthly-report`, `daily-review-reminder`, or `update-review`. Prefer this skill even if the user does not name it but mentions student profiles, review-round, `due-date`, or `mistake-record`. Do not use for one-off tutoring, generic study plans, Anki, grade spreadsheets, receipt OCR, or unrelated repo engineering."
 ---
 
