@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from scripts.core.file_ops import find_mistake_files, get_student_dir, parse_frontmatter
 from scripts.core import srs
+from scripts.core.chart_engine import ChartEngine
 from scripts import output_naming as out_names
 
 
@@ -683,6 +684,22 @@ generated: {now_str}
                 'path': m.get('_path'),
             })
         
+        # 生成学科分布饼图
+        chart_path: Optional[Path] = None
+        if by_subject and total > 0:
+            chart_engine = ChartEngine()
+            chart_output_dir = output_path.parent if output_path else self.student_dir / "reports"
+            chart_output_dir.mkdir(parents=True, exist_ok=True)
+            chart_filename = f"subject_distribution_{self.student_name}.png"
+            chart_path = chart_output_dir / chart_filename
+            
+            subject_data = {subj: float(count) for subj, count in by_subject.items()}
+            chart_engine.pie_chart(
+                data=subject_data,
+                title="学科分布",
+                output_path=chart_path
+            )
+        
         # 生成报告
         now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
         subject_label = out_names.subject_label_for_filename(subject) if subject else "全科"
@@ -724,6 +741,13 @@ generated: {now_str}
         for subj, count in sorted(by_subject.items(), key=lambda x: -x[1]):
             pct = f"{count/total*100:.1f}%" if total > 0 else "0%"
             report_lines.append(f"| {subj} | {count} | {pct} |")
+        
+        # 添加饼图到报告
+        if chart_path and chart_path.exists():
+            report_lines.append(f"""
+![学科分布饼图]({chart_path})
+
+""")
         
         report_lines.append("""
 ---
