@@ -200,7 +200,7 @@ def parse_frontmatter(content: str) -> dict:
     return fm
 
 
-def parse_created_date(val) -> Optional[datetime]:
+def parse_created_date(val: Optional[str]) -> Optional[datetime]:
     """
     解析创建日期字符串为 datetime 对象。
     
