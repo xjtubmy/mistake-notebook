@@ -258,7 +258,7 @@ class ReviewService:
         
         return due_mistakes
     
-    def update_review(self, mistake_id: str, result: str = 'pass') -> ReviewResult:
+    def update_review(self, mistake_id: str, result: str = 'pass', confidence: Optional[str] = None) -> ReviewResult:
         """更新单次复习结果
         
         根据复习结果更新错题的复习轮次和下次到期日。
@@ -266,6 +266,7 @@ class ReviewService:
         Args:
             mistake_id: 错题 ID
             result: 复习结果，'pass' 表示通过，'fail' 表示未通过
+            confidence: 掌握度级别，可选 'low', 'medium', 'high'，用于调整下次复习间隔
         
         Returns:
             ReviewResult 对象，包含更新结果详情
@@ -319,6 +320,14 @@ class ReviewService:
             # 通过：进入下一轮
             mistake.review_round += 1
             
+            # 如果提供了新的掌握度，更新它
+            if confidence is not None:
+                try:
+                    mistake.confidence = Confidence(confidence)
+                except ValueError:
+                    # 无效的 confidence 值，保持原值
+                    pass
+            
             # 计算下次到期日
             mistake.due_date = calculate_next_due(
                 current_round=mistake.review_round,
@@ -350,13 +359,14 @@ class ReviewService:
             new_due_date=mistake.due_date,
         )
     
-    def batch_update(self, mistake_ids: List[str]) -> BatchResult:
+    def batch_update(self, mistake_ids: List[str], confidence: Optional[str] = None) -> BatchResult:
         """批量更新复习状态
         
         对所有指定的错题执行复习更新（默认为通过）。
         
         Args:
             mistake_ids: 错题 ID 列表
+            confidence: 掌握度级别，可选 'low', 'medium', 'high'，批量设置给所有错题
         
         Returns:
             BatchResult 对象，包含批量操作结果统计
@@ -364,7 +374,7 @@ class ReviewService:
         batch_result = BatchResult(total=len(mistake_ids))
         
         for mistake_id in mistake_ids:
-            result = self.update_review(mistake_id)
+            result = self.update_review(mistake_id, confidence=confidence)
             batch_result.results.append(result)
             
             if result.success:

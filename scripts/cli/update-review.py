@@ -15,6 +15,9 @@
     # 批量更新 - 按学科
     python3 update-review.py --student 曲凌松 --today --subject physics
     
+    # 设置掌握度（影响下次复习间隔）
+    python3 update-review.py --student 曲凌松 --id 20260331-001 --confidence high
+    
     # 交互式更新
     python3 update-review.py --student 曲凌松 --interactive
 
@@ -28,6 +31,7 @@ import re
 from pathlib import Path
 from datetime import datetime, timedelta
 from collections import defaultdict
+from typing import Optional
 
 # 添加项目根目录到路径以支持 scripts 模块导入
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -137,8 +141,17 @@ def fix_first_round_due_dates(student: str, dry_run: bool = False) -> int:
     return changed
 
 
-def update_mistake_file(mistake_file: Path, review_round: int) -> tuple:
-    """更新错题文件"""
+def update_mistake_file(mistake_file: Path, review_round: int, confidence: Optional[str] = None) -> tuple:
+    """更新错题文件
+    
+    Args:
+        mistake_file: 错题文件路径
+        review_round: 复习轮次
+        confidence: 掌握度级别（可选），low/medium/high
+    
+    Returns:
+        (success, next_review_str) 元组
+    """
     content = mistake_file.read_text(encoding='utf-8')
     fm = srs.parse_frontmatter(content)
 
@@ -150,31 +163,56 @@ def update_mistake_file(mistake_file: Path, review_round: int) -> tuple:
         else:
             next_review_str = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
     elif review_round < len(REVIEW_INTERVALS):
-        next_interval = REVIEW_INTERVALS[review_round]
-        next_review = datetime.now() + timedelta(days=next_interval)
+        # 使用 SRS 模块的 calculate_next_due 计算，支持掌握度调整
+        from scripts.core.srs import calculate_next_due, ReviewSchedule
+        schedule = ReviewSchedule()
+        base_interval = schedule.intervals[review_round] if review_round < len(schedule.intervals) else REVIEW_INTERVALS[review_round]
+        multiplier = schedule.confidence_multipliers.get(confidence, 1.0) if confidence else 1.0
+        adjusted_interval = int(base_interval * multiplier)
+        next_review = datetime.now() + timedelta(days=adjusted_interval)
         next_review_str = next_review.strftime('%Y-%m-%d')
     else:
         next_review_str = 'completed'
     
     content = re.sub(r'review-round: \d+', f'review-round: {review_round}', content)
     content = re.sub(r'due-date: \S+', f'due-date: {next_review_str}', content)
+    
+    # 更新掌握度
+    if confidence:
+        content = re.sub(r'confidence: \S+', f'confidence: {confidence}', content)
+        # 如果原来没有 confidence 字段，添加它
+        if 'confidence:' not in content:
+            ins = re.search(r'^---\s*\n', content, re.MULTILINE)
+            if ins:
+                pos = ins.end()
+                content = content[:pos] + f'confidence: {confidence}\n' + content[pos:]
 
     mistake_file.write_text(content, encoding='utf-8')
     return True, next_review_str
 
 
-def batch_update(reviews: list) -> dict:
-    """批量更新：每道题在自身 review-round 基础上 +1，并写回下一 due-date。"""
+def batch_update(reviews: list, confidence: Optional[str] = None) -> dict:
+    """批量更新：每道题在自身 review-round 基础上 +1，并写回下一 due-date。
+    
+    Args:
+        reviews: 待复习错题列表
+        confidence: 掌握度级别（可选），low/medium/high
+    """
     stats = defaultdict(int)
     for r in reviews:
         stats[r['subject']] += 1
         new_round = int(r['review_round']) + 1
-        update_mistake_file(r['path'], new_round)
+        update_mistake_file(r['path'], new_round, confidence=confidence)
     return stats
 
 
-def print_summary(stats: dict):
-    """打印汇总"""
+def print_summary(stats: dict, confidence: Optional[str] = None):
+    """打印汇总
+    
+    Args:
+        stats: 按学科统计的更新数量
+        confidence: 掌握度级别（可选）
+    """
     total = sum(stats.values())
     print("\n" + "=" * 60)
     print("✅ 复习更新完成！")
@@ -183,6 +221,9 @@ def print_summary(stats: dict):
     for subj, count in sorted(stats.items()):
         print(f"  • {subj}: {count} 道")
     print("\n每道题已在原 review-round 基础上 +1，并按艾宾浩斯间隔写入新的 due-date。")
+    if confidence:
+        mult = 1.0 if confidence == 'low' else 1.2 if confidence == 'medium' else 1.5
+        print(f"掌握度设置为 {confidence}，下次复习间隔将乘以 {mult}。")
     print("=" * 60)
 
 
@@ -193,6 +234,8 @@ def main():
     parser.add_argument('--round', type=int, default=1, help='复习轮次（0-5）')
     parser.add_argument('--today', action='store_true', help='更新今日到期的错题')
     parser.add_argument('--subject', help='按学科筛选')
+    parser.add_argument('--confidence', choices=['low', 'medium', 'high'],
+                        help='掌握度级别 (low/medium/high)，影响下次复习间隔：low=基础间隔，medium=延长 20%%，high=延长 50%%')
     parser.add_argument('--interactive', action='store_true', help='交互式更新')
     parser.add_argument('--dry-run', action='store_true', help='预览模式')
     parser.add_argument('--fix-first-due', action='store_true',
@@ -217,12 +260,16 @@ def main():
         print(f"✅ 找到错题：{mistake_file}")
         
         if not args.dry_run:
-            success, next_review = update_mistake_file(mistake_file, args.round)
+            success, next_review = update_mistake_file(mistake_file, args.round, confidence=args.confidence)
             if success:
                 print(f"\n✅ 复习进度已更新！")
                 print(f"   下次复习日期：{next_review}")
+                if args.confidence:
+                    print(f"   掌握度：{args.confidence}（间隔乘数 {1.0 if args.confidence == 'low' else 1.2 if args.confidence == 'medium' else 1.5}）")
         else:
             print(f"\n🚫 预览模式：将更新为第{args.round}轮")
+            if args.confidence:
+                print(f"   掌握度：{args.confidence}")
         return
     
     # 批量更新模式
@@ -256,6 +303,9 @@ def main():
         print("\n" + "=" * 60)
         print("更新参数:")
         print("  复习轮次：每道题在各自当前轮次上 +1（不再使用固定 --round）")
+        if args.confidence:
+            mult = 1.0 if args.confidence == 'low' else 1.2 if args.confidence == 'medium' else 1.5
+            print(f"  掌握度：{args.confidence}（间隔乘数 {mult}）")
         print("=" * 60)
         
         if args.dry_run:
@@ -263,8 +313,8 @@ def main():
             return
         
         # 执行批量更新
-        stats = batch_update(reviews)
-        print_summary(stats)
+        stats = batch_update(reviews, confidence=args.confidence)
+        print_summary(stats, confidence=args.confidence)
         return
     
     print("❌ 请指定更新方式：")

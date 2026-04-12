@@ -327,6 +327,54 @@ class TestUpdateReview:
         
         assert result.success is True
         assert result.new_round == 1  # 默认 pass，轮次增加
+    
+    def test_update_review_with_confidence_low(self, temp_dir, setup_student_mistakes):
+        """测试低掌握度更新（间隔乘数 1.0）"""
+        service = ReviewService('张三', base_dir=temp_dir)
+        
+        result = service.update_review('test-001', result='pass', confidence='low')
+        
+        assert result.success is True
+        assert result.new_round == 1
+        # 低掌握度：基础间隔 3 天 * 1.0 = 3 天
+        expected_due = date.today() + timedelta(days=3)
+        assert result.new_due_date == expected_due
+    
+    def test_update_review_with_confidence_medium(self, temp_dir, setup_student_mistakes):
+        """测试中等掌握度更新（间隔乘数 1.2）"""
+        service = ReviewService('张三', base_dir=temp_dir)
+        
+        result = service.update_review('test-001', result='pass', confidence='medium')
+        
+        assert result.success is True
+        assert result.new_round == 1
+        # 中等掌握度：基础间隔 3 天 * 1.2 = 3.6 -> 3 天（向下取整）
+        expected_due = date.today() + timedelta(days=3)
+        assert result.new_due_date == expected_due
+    
+    def test_update_review_with_confidence_high(self, temp_dir, setup_student_mistakes):
+        """测试高掌握度更新（间隔乘数 1.5）"""
+        service = ReviewService('张三', base_dir=temp_dir)
+        
+        result = service.update_review('test-001', result='pass', confidence='high')
+        
+        assert result.success is True
+        assert result.new_round == 1
+        # 高掌握度：基础间隔 3 天 * 1.5 = 4.5 -> 4 天（向下取整）
+        expected_due = date.today() + timedelta(days=4)
+        assert result.new_due_date == expected_due
+    
+    def test_update_review_confidence_invalid(self, temp_dir, setup_student_mistakes):
+        """测试无效掌握度值保持原值"""
+        service = ReviewService('张三', base_dir=temp_dir)
+        
+        # 传入无效的 confidence 值，应保持原有的 'low'
+        result = service.update_review('test-001', result='pass', confidence='invalid')
+        
+        assert result.success is True
+        # 应使用默认乘数 1.0
+        expected_due = date.today() + timedelta(days=3)
+        assert result.new_due_date == expected_due
 
 
 class TestBatchUpdate:
@@ -375,6 +423,23 @@ class TestBatchUpdate:
         assert isinstance(result.results[0], ReviewResult)
         assert result.results[0].mistake_id == 'test-001'
         assert result.results[0].success is True
+    
+    def test_batch_update_with_confidence(self, temp_dir, setup_student_mistakes):
+        """测试批量更新支持掌握度参数"""
+        service = ReviewService('张三', base_dir=temp_dir)
+        
+        # 批量更新并设置高掌握度
+        result = service.batch_update(['test-001', 'test-002'], confidence='high')
+        
+        assert result.total == 2
+        assert result.success_count == 2
+        assert result.failed_count == 0
+        
+        # 验证两道题都使用了高掌握度计算
+        # test-001: round 0 -> 1，第二轮高掌握度：3 * 1.5 = 4.5 -> 4 天
+        # test-002: round 1 -> 2，第三轮高掌握度：7 * 1.5 = 10.5 -> 10 天
+        assert result.results[0].new_due_date == date.today() + timedelta(days=4)
+        assert result.results[1].new_due_date == date.today() + timedelta(days=10)
 
 
 class TestGetReviewStats:
