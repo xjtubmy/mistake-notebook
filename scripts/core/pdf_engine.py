@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import markdown2
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 from playwright.sync_api import sync_playwright
+
+from .pdf_templates import get_enhanced_css, get_html_template
 
 
 class PDFEngine:
@@ -34,51 +36,63 @@ class PDFEngine:
         """
         self.output_dir = output_dir or Path.cwd()
 
-    def printable_html_from_markdown(self, markdown: str) -> str:
+    def printable_html_from_markdown(
+        self, markdown: str, title: str = "", base_dir: Optional[Path] = None
+    ) -> str:
         """
         将 Markdown 内容转换为可打印的 HTML。
 
-        使用 markdown2 库解析 Markdown，并添加适合打印的 CSS 样式，
-        包括中文字体、A4 页面设置和表格/代码块样式。
+        使用 markdown2 库解析 Markdown，并应用增强的 CSS 样式模板，
+        包括中文字体（Noto Sans SC）、专业配色、表格样式和页眉页脚。
+        支持将本地图片路径转换为 file:// URL 以便 Playwright 加载。
 
         Args:
             markdown: Markdown 格式的文本内容。
+            title: 文档标题（可选），用于页眉显示。
+            base_dir: 基础目录路径，用于解析相对路径的图片（可选）。
 
         Returns:
-            完整的 HTML 文档字符串，包含内联 CSS 样式。
+            完整的 HTML 文档字符串，包含增强的 CSS 样式。
         """
-        html_body = markdown2.markdown(
-            markdown,
-            extras=["tables", "fenced-code-blocks", "emoji", "markdown-in-html"],
+        html_body = cast(
+            str,
+            markdown2.markdown(
+                markdown,
+                extras=["tables", "fenced-code-blocks", "emoji", "markdown-in-html"],
+            ),
         )
-        return f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        @page {{ size: A4; margin: 2cm; }}
-        body {{ font-family: "SimSun", "Songti SC", serif; line-height: 1.8; font-size: 12pt; }}
-        h1 {{ text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; font-size: 18pt; }}
-        h2 {{ color: #333; border-left: 4px solid #4CAF50; padding-left: 10px; font-size: 14pt; page-break-after: avoid; }}
-        h3 {{ color: #555; font-size: 12pt; }}
-        img {{ max-width: 100%; height: auto; display: block; margin: 10px auto; }}
-        table {{ border-collapse: collapse; width: 100%; margin: 10px 0; }}
-        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-        th {{ background-color: #f5f5f5; }}
-        pre {{ background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 10pt; }}
-        blockquote {{ border-left: 4px solid #4CAF50; padding-left: 15px; margin: 10px 0; color: #555; }}
-        details {{ margin: 0.8em 0; padding: 0.5em 1em; border: 1px solid #ddd; border-radius: 4px; }}
-        summary {{ cursor: pointer; font-weight: bold; }}
-    </style>
-</head>
-<body>
-{html_body}
-</body>
-</html>
-"""
+        
+        # 处理本地图片路径，转换为 file:// URL 以便 Playwright 加载
+        if base_dir:
+            import re
+            base_dir_resolved = str(base_dir.resolve())
+            
+            def replace_img_path(match: re.Match[str]) -> str:
+                img_tag = match.group(0)
+                # 提取 src 属性
+                src_match = re.search(r'src="([^"]+)"', img_tag)
+                if src_match:
+                    src = src_match.group(1)
+                    # 如果是相对路径且文件存在，转换为 file:// URL
+                    if not src.startswith(('http://', 'https://', 'file://', 'data:')):
+                        img_path = Path(src)
+                        if not img_path.is_absolute():
+                            img_path = base_dir / src
+                        if img_path.exists():
+                            file_url = img_path.resolve().as_uri()
+                            return img_tag.replace(f'src="{src}"', f'src="{file_url}"')
+                return img_tag
+            
+            html_body = re.sub(r'<img[^>]+>', replace_img_path, html_body)
+        
+        return get_html_template(title=title, content=html_body)
 
     def markdown_to_pdf(
-        self, markdown_content: str, output_path: Path, title: str = ""
+        self,
+        markdown_content: str,
+        output_path: Path,
+        title: str = "",
+        base_dir: Optional[Path] = None,
     ) -> Path:
         """
         将 Markdown 内容直接转换为 PDF 文件。
@@ -89,11 +103,14 @@ class PDFEngine:
             markdown_content: Markdown 格式的文本内容。
             output_path: PDF 输出文件路径。
             title: 文档标题（可选），用于日志输出。
+            base_dir: 基础目录路径，用于解析相对路径的图片（可选）。
 
         Returns:
             生成的 PDF 文件的绝对路径。
         """
-        html_content = self.printable_html_from_markdown(markdown_content)
+        html_content = self.printable_html_from_markdown(
+            markdown_content, title=title, base_dir=base_dir
+        )
         self.html_to_pdf(html_content, output_path)
         return output_path.resolve()
 
