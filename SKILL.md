@@ -1,11 +1,11 @@
 ---
 name: mistake-notebook
-description: "Use this skill for a student's 错题本 workflow in Obsidian or `data/mistake-notebook/`, especially when the user is recording wrong answers, managing spaced review, or asking what should be reviewed today. Trigger for: 录入或归档错题 from photos or text; filling or explaining `type: mistake-record` YAML/frontmatter; “今天有什么要复习的”, “今天的复习提醒”, or “复习完了”; exporting subject review PDFs; generating 举一反三 or 变式题; analyzing 薄弱知识点 or 月报; setting Feishu/WeChat daily reminders or `crontab`; and first-run checks with `check-deps`, `export-printable`, `generate-practice`, `weak-points`, `monthly-report`, `daily-review-reminder`, or `update-review`. Prefer this skill even if the user does not name it but mentions student profiles, review-round, `due-date`, or `mistake-record`. Do not use for one-off tutoring, generic study plans, Anki, grade spreadsheets, receipt OCR, or unrelated repo engineering."
+description: "Use this skill for a student's 错题本 workflow in Obsidian or `data/mistake-notebook/`, especially when the user is recording wrong answers, managing spaced review, or asking what should be reviewed today. Trigger for: 录入或归档错题 from photos or text; filling or explaining `type: mistake-record` YAML/frontmatter; "今天有什么要复习的", "今天的复习提醒", or "复习完了"; exporting subject review PDFs; generating 举一反三 or 变式题; analyzing 薄弱知识点 or 月报; setting Feishu/WeChat daily reminders or `crontab`; and first-run checks with `check-deps`, `export-printable`, `generate-practice`, `weak-points`, `monthly-report`, `daily-review-reminder`, or `update-review`. Prefer this skill even if the user does not name it but mentions student profiles, review-round, `due-date`, or `mistake-record`. Do not use for one-off tutoring, generic study plans, Anki, grade spreadsheets, receipt OCR, or unrelated repo engineering."
 ---
 
 # Mistake Notebook
 
-面向中小学错题整理与复习管理的工作流型 skill。重点不是“讲题”，而是把错题录入、归档、复习、分析、导出和提醒串成一套可持续使用的流程。
+面向中小学错题整理与复习管理的工作流型 skill。重点不是"讲题"，而是把错题录入、归档、复习、分析、导出和提醒串成一套可持续使用的流程。
 
 ## Quick Start
 
@@ -14,10 +14,11 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 - **第一次使用**：运行 `init-student.py` 创建学生档案
 - 录入或整理错题到 Obsidian 或 `data/mistake-notebook/`
 - 补全或解释 `type: mistake-record` 的 YAML/frontmatter
-- 查询“今天有什么要复习的”或“今天的复习提醒”
+- 查询"今天有什么要复习的"或"今天的复习提醒"
 - 导出某科或全部复习 PDF
-- 用户说“复习完了”，需要自动更新复习进度
-- 生成举一反三、薄弱点分析、分析报告、月报
+- 用户说"复习完了"，需要自动更新复习进度（支持 `--confidence` 设置掌握度）
+- 生成举一反三（支持 `--difficulty` 难度筛选）、薄弱点分析、分析报告、月报
+- **图表生成**：分析报告支持饼图、柱状图、热力图三种可视化图表
 - 配置每日提醒、飞书/微信渠道、`crontab`
 - 检查依赖或环境
 
@@ -32,10 +33,10 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 ## Core Rules
 
 1. 每道错题都要有完整元数据。缺字段时先追问再入库。
-2. 用户问“今天有什么要复习的”时，先给文字列表，不要直接发 PDF。
-3. 回答「今日待复习」时，**只呈现与脚本一致的待复习列表**（有效到期日 ≤ 今天，含超期）。**不要**自作主张追加「其他错题进度」「尚未到期的题」「全盘错题概况」等额外小节——会与「今天该复习什么」的语义混淆；用户若要其他视图应单独说明。
+2. 用户问"今天有什么要复习的"时，先给文字列表，不要直接发 PDF。
+3. 回答「今日待复习」时，**只呈现与脚本一致的待复习列表**（有效到期日 ≤ 今天，含超期）。**不要**自作主张追加「其他错题进度」「尚未到期的题」「全盘错题概况」等额外小节--会与「今天该复习什么」的语义混淆；用户若要其他视图应单独说明。
 4. 只有在用户明确要求发送某科或全部复习内容时，才导出 PDF。
-5. 用户说“复习完了”时，优先自动批量更新今日到期内容。
+5. 用户说"复习完了"时，优先自动批量更新今日到期内容。
 6. 更新复习后，要告诉用户复习统计和下次复习日期。
 7. 优先复用现有脚本，不要临时发明平行工作流。
 8. 回复语气保持亲和、直接、专业，不使用强人设称呼。
@@ -60,7 +61,7 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 
 ### 3. 录入错题
 
-当用户提供照片、截图、题目文本，或要求“录入错题”“整理错题本”时：
+当用户提供照片、截图、题目文本，或要求"录入错题""整理错题本"时：
 
 1. 确认学生档案是否存在
 2. 抽取题目内容和学生作答
@@ -77,12 +78,12 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 
 ### 4. 查询待复习内容
 
-当用户说“今天有什么要复习的”“今天的复习提醒”时：
+当用户说"今天有什么要复习的""今天的复习提醒"时：
 
 1. 先生成今日待复习列表：**仅包含有效到期日 ≤ 今天的题目**（含已超期）；**未到期的题目不得列出**
 2. 按学科分组
 3. 只返回文字列表；**勿在列表外加「其他错题进度」等补充块**（与规则 3 一致）
-4. 明确提示可继续说“发送物理的复习内容”“发送所有复习内容”
+4. 明确提示可继续说"发送物理的复习内容""发送所有复习内容"
 
 详细触发词和回复逻辑读：
 
@@ -103,14 +104,20 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 
 ### 6. 更新复习进度
 
-当用户说“复习完了”“今天的错题复习完了”“物理复习完了”时：
+当用户说"复习完了""今天的错题复习完了""物理复习完了"时：
 
 1. 自动推断今天/学科（必要时补问）
 2. 优先批量更新
 3. 运行 `update-review.py`
 4. 返回更新数量、涉及学科、下次复习日期
+5. **支持掌握度设置**：用户可指定 `--confidence low/medium/high`，影响下次复习间隔
 
 `review-round: 0` 时，待复习到期日按 **`created + 1 天`** 计算；若历史文件里 `due-date` 与该日期不一致，可运行 `update-review.py --fix-first-due` 写回。
+
+**掌握度乘数**：
+- `low`：间隔 × 1.0（需要更频繁复习）
+- `medium`：间隔 × 1.2（正常间隔）
+- `high`：间隔 × 1.5（延长间隔）
 
 详细参数和自然语言映射读：
 
@@ -121,21 +128,31 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 
 当用户要生成变式题、薄弱点分析、分析报告、月报时，优先使用：
 
-- `generate-practice.py`（默认 Markdown + 同名 PDF，Playwright；`--md-only` 可只出 md）
-- `weak-points.py`
-- `analyze.py`
-- `monthly-report.py`
+- `generate-practice.py`（默认 Markdown + 同名 PDF，Playwright；`--md-only` 可只出 md；**支持 `--difficulty` 难度筛选**）
+- `weak-points.py`（**生成错误类型柱状图**）
+- `analyze.py`（**生成学科分布饼图**）
+- `monthly-report.py`（**生成复习热力图**）
 
-**支持的知识点的（2026-04-12 更新）**：
+**难度分级**（1-5 星）：
+- 基础 (★☆☆☆☆ - ★★☆☆☆)：巩固基本概念
+- 变式 (★★★☆☆)：中等难度，变式训练
+- 提升 (★★★★☆ - ★★★★★)：挑战高分，综合应用
+
+**图表类型**：
+- 🥧 **饼图**：学科分布、知识点占比
+- 📊 **柱状图**：错误类型对比、周趋势
+- 🔥 **热力图**：复习密度、日历视图
+
+**支持的知识点的（2026-04-12 更新，共 30 个）**：
 
 | 学科 | 知识点 |
 |------|--------|
-| 物理 | 力的合成、牛顿第一定律、欧姆定律、浮力、压强、杠杆、电功率 |
-| 数学 | 一元一次方程、二次函数、勾股定理、三角形全等、平行四边形 |
-| 英语 | 现在完成时、一般过去时、定语从句、被动语态 |
-| 化学 | 化学方程式 |
+| 物理 (10) | 力的合成、牛顿第一定律、欧姆定律、浮力、压强、杠杆、电功率、光的反射、电路分析、能量守恒 |
+| 数学 (8) | 一元一次方程、二次函数、勾股定理、三角形全等、平行四边形、不等式、概率统计、三角函数 |
+| 英语 (7) | 现在完成时、一般过去时、定语从句、被动语态、状语从句、名词性从句、虚拟语气 |
+| 化学 (5) | 化学方程式、化学方程式配平、溶液浓度、酸碱中和、氧化还原反应 |
 
-> 支持知识点别名（如"欧姆"= "欧姆定律"，"完成时"= "现在完成时"）。若知识点无模板，返回通用练习题。
+> 支持知识点别名（如"欧姆"= "欧姆定律"，"完成时"= "现在完成时"，"方程"= "一元一次方程"）。若知识点无模板，使用 LLM Fallback 机制生成通用练习题。
 
 相关参考：
 
@@ -144,7 +161,7 @@ description: "Use this skill for a student's 错题本 workflow in Obsidian or `
 
 ### 8. 定时提醒 / 飞书 / 微信
 
-当用户要“每天 18:00 自动提醒”“给飞书发今日复习提醒”时：
+当用户要"每天 18:00 自动提醒""给飞书发今日复习提醒"时：
 
 1. 使用 `daily-review-reminder.py`
 2. 需要时先 `--dry-run`
@@ -229,7 +246,7 @@ python3 scripts/generate-practice.py --student 曲凌松 --wiki-mode
 
 - 是否判断清楚这是错题本工作流，而不是普通讲题
 - 是否补齐了关键元数据
-- 是否遵守了“先文字列表，后按需发 PDF”
+- 是否遵守了"先文字列表，后按需发 PDF"
 - 「今日待复习」回复是否未夹带「其他错题进度」等与查询范围不一致的内容
 - 是否复用了已有脚本
 - 是否在复习更新后给出统计和下次日期
