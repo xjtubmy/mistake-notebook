@@ -131,37 +131,47 @@ class PDFEngine:
         """
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with sync_playwright() as p:
-            # 优化：禁用 GPU、沙箱，使用 headless 模式提升性能
-            browser = p.chromium.launch(
-                headless=True,
-                args=[
-                    "--disable-gpu",
-                    "--disable-dev-shm-usage",
-                    "--disable-setuid-sandbox",
-                    "--no-sandbox",
-                    "--disable-web-security",
-                    "--disable-features=VizDisplayCompositor",
-                ]
-            )
-            # 优化：创建页面时禁用不必要的功能
-            page = browser.new_page(
-                viewport={"width": 1200, "height": 800},
-                device_scale_factor=1,
-                is_mobile=False,
-                has_touch=False,
-            )
-            # 优化：禁用图片、字体加载以加速（如果不需要）
-            # 但这里我们需要渲染完整内容，所以保持默认
-            page.set_content(html, wait_until="networkidle", timeout=30000)
-            page.pdf(
-                path=output_path,
-                format="A4",
-                print_background=True,
-                margin={"top": "2cm", "bottom": "2cm", "left": "2cm", "right": "2cm"},
-                prefer_css_page_size=True,
-            )
-            browser.close()
+        browser = None
+        try:
+            with sync_playwright() as p:
+                # 优化：禁用 GPU、沙箱，使用 headless 模式提升性能
+                browser = p.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--disable-gpu",
+                        "--disable-dev-shm-usage",
+                        "--disable-setuid-sandbox",
+                        "--no-sandbox",
+                        "--disable-web-security",
+                        "--disable-features=VizDisplayCompositor",
+                    ]
+                )
+                # 优化：创建页面时禁用不必要的功能
+                page = browser.new_page(
+                    viewport={"width": 1200, "height": 800},
+                    device_scale_factor=1,
+                    is_mobile=False,
+                    has_touch=False,
+                )
+                # 优化：禁用图片、字体加载以加速（如果不需要）
+                # 但这里我们需要渲染完整内容，所以保持默认
+                page.set_content(html, wait_until="networkidle", timeout=30000)
+                page.pdf(
+                    path=output_path,
+                    format="A4",
+                    print_background=True,
+                    margin={"top": "2cm", "bottom": "2cm", "left": "2cm", "right": "2cm"},
+                    prefer_css_page_size=True,
+                )
+        except Exception as e:
+            print(f"❌ PDF 生成失败: {e}")
+            raise
+        finally:
+            if browser:
+                try:
+                    browser.close()
+                except:
+                    pass  # 忽略关闭浏览器时的错误
 
         resolved = str(output_path.resolve())
         print(f"✅ 已导出 PDF: {resolved}")

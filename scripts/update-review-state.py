@@ -92,9 +92,9 @@ def reset_daily_state(student: str, state: dict):
     last_date = state.get('last_review_date')
     
     if last_date != today:
-        # 新的一天，清空已完成科目
+        # 新的一天，只清空已完成科目，保留待复习科目列表
         state['completed_subjects'] = []
-        state['pending_subjects'] = []  # 重新计算
+        # 注意：不要清空pending_subjects，因为它应该在查询时动态更新
         print(f"✅ 已重置每日状态（{today}）")
     else:
         print(f"ℹ️  仍是同一天（{today}），不清空状态")

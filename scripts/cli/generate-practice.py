@@ -753,42 +753,58 @@ def generate_practice(knowledge_point: str, style: str = '混合', count: int = 
         ao_para = ac_para / 2
         bo_para = bd_para / 2
         
-        # 替换模板中的占位符
+        # 安全替换模板中的占位符
+        params = {
+            # 力学
+            'f1': f1, 'f2': f2, 'f3': f3, 'diff': diff, 
+            'result': result_force, 'dir': direction,
+            'g': g_weight,
+            # 电学
+            'u': u, 'i': i, 'r': r, 'u1': u1, 'u2': u2, 'i1': i1, 'i2': i2,
+            # 浮力
+            'v': v, 'f': f_buoyancy,
+            # 压强
+            's': s_area, 'p_val': p_pressure,
+            # 杠杆
+            'f_lever_val': f_lever, 'gl': g_weight, 'gr': g_weight//2,
+            # 电功率
+            'p_pow': random.choice([40, 60, 100, 1000]),
+            'i_pow': round(random.choice([40, 60, 100])/220, 2),
+            'r_pow': round(220*220/random.choice([40, 60, 100]), 1),
+            # 数学 - 方程
+            'a_eq_val': a_eq, 'b_eq_val': b_eq, 'c_eq_val': c_eq, 'x_eq': x_sol, 'cx': cx,
+            'ab': ab, 'cx2': cx2, 'x2': x2_sol,
+            'a2': a_eq+1, 'b2': b_eq+2, 'c2': c_eq+3,
+            # 数学 - 二次函数
+            'b_quad_val': b_quad, 'c_quad_val': c_quad, 'h_quad': h, 'k_quad': k,
+            'delta': delta, 'ans_delta': ans_delta, 'judge': judge,
+            # 数学 - 勾股定理
+            'a_tri_val': a_tri, 'b_tri_val': b_tri, 'c_tri_val': c_tri, 
+            'c2_tri': c2, 'c2_alt_tri': c2_alt, 'c_alt_tri': c_alt,
+            # 数学 - 平行四边形
+            'angle_para_val': angle_para, 'angle_b_para': angle_b_para,
+            'ac_para_val': ac_para, 'bd_para_val': bd_para, 'ao_para_val': ao_para, 'bo_para_val': bo_para,
+            # 英语 - 通用
+            'num': random.choice([2, 3, 5, 10]),
+        }
+        
         for key in ['question', 'answer', 'parse', 'options']:
             if key in practice:
-                practice[key] = practice[key].format(
-                    # 力学
-                    f1=f1, f2=f2, f3=f3, diff=diff, 
-                    result=result_force, dir=direction,
-                    g=g_weight,
-                    # 电学
-                    u=u, i=i, r=r, u1=u1, u2=u2, i1=i1, i2=i2,
-                    # 浮力
-                    v=v, f_buoy=f_buoyancy,
-                    # 压强
-                    s=s_area, p_val=p_pressure,
-                    # 杠杆
-                    f_lever_val=f_lever, gl=g_weight, gr=g_weight//2,
-                    # 电功率
-                    p_pow=random.choice([40, 60, 100, 1000]),
-                    i_pow=round(random.choice([40, 60, 100])/220, 2),
-                    r_pow=round(220*220/random.choice([40, 60, 100]), 1),
-                    # 数学 - 方程
-                    a_eq_val=a_eq, b_eq_val=b_eq, c_eq_val=c_eq, x_eq=x_sol, cx=cx,
-                    ab=ab, cx2=cx2, x2=x2_sol,
-                    a2=a_eq+1, b2=b_eq+2, c2=c_eq+3,
-                    # 数学 - 二次函数
-                    b_quad_val=b_quad, c_quad_val=c_quad, h_quad=h, k_quad=k,
-                    delta=delta, ans_delta=ans_delta, judge=judge,
-                    # 数学 - 勾股定理
-                    a_tri_val=a_tri, b_tri_val=b_tri, c_tri_val=c_tri, 
-                    c2_tri=c2, c2_alt_tri=c2_alt, c_alt_tri=c_alt,
-                    # 数学 - 平行四边形
-                    angle_para_val=angle_para, angle_b_para=angle_b_para,
-                    ac_para_val=ac_para, bd_para_val=bd_para, ao_para_val=ao_para, bo_para_val=bo_para,
-                    # 英语 - 通用
-                    num=random.choice([2, 3, 5, 10]),
-                )
+                try:
+                    practice[key] = practice[key].format(**params)
+                except KeyError as e:
+                    # 如果参数不存在，保留原始占位符
+                    print(f"警告: 未找到参数 {e}，保留原始模板")
+                    continue
+                except Exception as e:
+                    # 对于其他格式化错误，尝试安全处理
+                    import re
+                    # 使用正则表达式安全替换，避免格式化错误
+                    temp_value = practice[key]
+                    for param_key, param_value in params.items():
+                        placeholder = '{' + param_key + '}'
+                        temp_value = temp_value.replace(placeholder, str(param_value))
+                    practice[key] = temp_value
         
         # 添加难度标记（根据风格）
         difficulty_map = {'基础': random.randint(1, 2), '变式': 3, '提升': random.randint(4, 5), '混合': 3}

@@ -40,6 +40,11 @@ def load_mistakes(student: str, subject: str = None, unit: str = None) -> list:
     """加载学生错题（从 analysis.md 读取解析）"""
     mistakes = []
     
+    # 验证输入参数防止路径遍历
+    if '..' in student or student.startswith('/') or student.startswith('../'):
+        print(f"错误：无效的学生名称 '{student}'")
+        return []
+    
     # 尝试多个可能的数据目录
     possible_paths = [
         Path('/home/ubuntu/clawd/data/mistake-notebook/students'),
@@ -49,12 +54,30 @@ def load_mistakes(student: str, subject: str = None, unit: str = None) -> list:
     
     base_path = None
     for p in possible_paths:
-        if (p / student / 'mistakes').exists():
-            base_path = p / student / 'mistakes'
-            break
+        # 确保路径在允许范围内
+        candidate_path = p / student / 'mistakes'
+        try:
+            resolved_candidate = candidate_path.resolve()
+            resolved_p = p.resolve()
+            # 检查路径是否在允许的根目录下
+            resolved_candidate.relative_to(resolved_p)
+            if resolved_candidate.exists():
+                base_path = resolved_candidate
+                break
+        except ValueError:
+            # 路径不在允许范围内，跳过
+            continue
     
     if base_path is None:
-        base_path = possible_paths[0] / student / 'mistakes'
+        # 使用第一个可能的路径并验证
+        base_path_candidate = possible_paths[0] / student / 'mistakes'
+        try:
+            base_path = base_path_candidate.resolve()
+            allowed_root = possible_paths[0].resolve()
+            base_path.relative_to(allowed_root)
+        except ValueError:
+            print(f"错误：无效的学生路径 '{student}'")
+            return []
     
     if not base_path.exists():
         return mistakes
